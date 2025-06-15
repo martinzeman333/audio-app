@@ -4,14 +4,11 @@
     --text-primary: #ffffff;
     --text-secondary: #a0a8d3;
     --border-color: rgba(67, 75, 127, 0.5);
-    
     --accent-glow: #ff4aa1;
     --accent-gradient: linear-gradient(90deg, #6e56ff, #ff4aa1);
-    
     --font-family: 'Poppins', sans-serif;
     --shadow: 0px 10px 30px rgba(0, 0, 0, 0.3);
 }
-
 body {
     font-family: var(--font-family);
     background-color: var(--bg-dark);
@@ -20,60 +17,15 @@ body {
     margin: 0; padding: 30px 15px;
     display: grid; place-items: center; min-height: 100vh;
 }
-
-/* --- Styly pro banner na obnovu --- */
-#restore-banner {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background-color: var(--bg-card);
-    border-bottom: 1px solid var(--border-color);
-    padding: 15px;
-    z-index: 2000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-    box-shadow: var(--shadow);
-}
-#restore-banner p {
-    margin: 0;
-    color: var(--text-secondary);
-}
-#restore-banner button {
-    padding: 8px 16px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background-color: transparent;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-#restore-banner button:hover {
-    border-color: var(--accent-glow);
-    color: var(--accent-glow);
-}
-#restore-banner button#restore-yes {
-    background-color: var(--accent-glow);
-    border-color: var(--accent-glow);
-    color: white;
-}
-
-.container { width: 100%; max-width: 600px; padding-top: 60px; /* Přidán padding, aby banner nepřekrýval obsah */}
+.container { width: 100%; max-width: 600px; }
 .header { text-align: center; margin-bottom: 25px; }
 .header h1 { font-weight: 600; font-size: 2em; }
-
 .recorder-visualizer {
     display: flex; flex-direction: column; align-items: center;
     gap: 20px; margin-bottom: 40px;
 }
 #audioVisualizer { width: 100%; height: 70px; }
-.recorder-buttons-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
+.recorder-buttons-wrapper { display: flex; align-items: center; gap: 25px; }
 #recordStopButton {
     width: 80px; height: 80px; border-radius: 50%; border: none;
     background: var(--accent-gradient); color: white;
@@ -85,23 +37,25 @@ body {
 #recordStopButton.is-recording { animation: pulse 1.5s infinite; }
 #recordStopButton:disabled { background: #5a618a; box-shadow: none; cursor: not-allowed; }
 
+/* --- NOVÝ VZHLED PRO TLAČÍTKO ZPRACOVAT --- */
 .process-button {
-    background: transparent;
-    border: 1px solid var(--border-color);
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    border: none;
+    background: #272c4a;
     color: var(--text-secondary);
-    padding: 10px 20px;
-    border-radius: 25px;
+    display: grid;
+    place-items: center;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
     transition: all 0.2s ease;
+    border: 2px solid var(--border-color);
 }
 .process-button:hover {
     color: white;
     border-color: var(--accent-glow);
-    background-color: rgba(255, 74, 161, 0.1);
+    transform: scale(1.1);
 }
+.process-button span { display: none; } /* Skryjeme text, je tam jen pro screen readery */
 
 #statusText { color: var(--text-secondary); font-size: 1em; transition: color 0.3s ease; }
 @keyframes pulse {
@@ -109,7 +63,6 @@ body {
     50% { box-shadow: 0 0 35px var(--accent-glow), 0 0 45px var(--accent-glow) inset; }
     100% { box-shadow: 0 0 20px var(--accent-glow), 0 0 30px var(--accent-glow) inset; }
 }
-
 .card {
     background: var(--bg-card);
     border-radius: 20px; padding: 25px 30px; margin-bottom: 25px;
@@ -124,7 +77,6 @@ textarea {
     transition: all 0.2s ease;
 }
 textarea:focus { outline: none; border-color: var(--accent-glow); box-shadow: 0 0 15px rgba(255, 74, 161, 0.3); }
-
 .output-actions { display: flex; flex-direction: column; gap: 15px; }
 .action-row { display: flex; justify-content: center; align-items: center; gap: 20px; }
 .icon-button {
@@ -150,41 +102,9 @@ textarea:focus { outline: none; border-color: var(--accent-glow); box-shadow: 0 
     background-position: right 15px center;
     background-size: 20px;
 }
-.custom-select:hover, .custom-select:focus {
-    border-color: var(--accent-glow);
-}
-.custom-select:focus {
-    outline: none;
-    box-shadow: 0 0 15px rgba(255, 74, 161, 0.3);
-}
-.custom-select option {
-    background-color: var(--bg-dark);
-    color: var(--text-primary);
-}
-
+.custom-select:hover, .custom-select:focus { border-color: var(--accent-glow); }
+.custom-select:focus { outline: none; box-shadow: 0 0 15px rgba(255, 74, 161, 0.3); }
+.custom-select option { background-color: var(--bg-dark); color: var(--text-primary); }
 .hidden { display: none; }
-
 #loader {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
-    background-color: rgba(13, 15, 33, 0.8);
-    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
-    display: flex; flex-direction: column;
-    justify-content: center; align-items: center; gap: 20px;
-    opacity: 1;
-    transition: opacity 0.3s ease;
-}
-#loader.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-#loader p { font-size: 1.2em; color: var(--text-secondary); }
-.spinner {
-    border: 5px solid #374151;
-    border-top: 5px solid var(--accent-glow);
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    animation: spin 1s linear infinite;
-    margin: 0;
-}
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10
