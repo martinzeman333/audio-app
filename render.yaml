@@ -1,0 +1,25 @@
+# render.yaml
+
+services:
+  - type: web
+    name: audio-app # Můžete si zvolit vlastní název
+    env: python
+    
+    # TOTO JE KLÍČOVÝ ŘÁDEK, KTERÝ ŘEŠÍ VÁŠ PROBLÉM
+    pythonVersion: '3.11'
+    
+    # Příkazy pro sestavení a spuštění aplikace
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    
+    # DŮLEŽITÉ: Nastavení API klíčů
+    # Zde definujeme, které proměnné prostředí má aplikace používat.
+    envVars:
+      - key: AZURE_SPEECH_KEY
+        fromGroup: audio-app-secrets # Název skupiny s klíči (viz krok 2)
+      - key: AZURE_SPEECH_REGION
+        fromGroup: audio-app-secrets
+      - key: OPENAI_API_KEY
+        fromGroup: audio-app-secrets
+      - key: PYTHON_VERSION # Přidáme pro jistotu
+        value: '3.11'
