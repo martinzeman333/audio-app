@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div id="loader" class="hidden">
+        <div class="spinner"></div>
+        <p id="loader-text">Zpracovávám...</p>
+    </div>
+
     <div class="container">
         <div class="header">
             <h1>Audio AI Assistant</h1>
