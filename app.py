@@ -34,6 +34,7 @@ def transcribe_audio_azure(audio_filename):
         region=os.getenv("AZURE_SPEECH_REGION")
     )
     speech_config.speech_recognition_language = "cs-CZ"
+    # Nastaví delší prodlevu pro detekci konce řeči (5 sekund)
     speech_config.set_property(speechsdk.PropertyId.Speech_SegmentationSilenceTimeoutMs, "5000")
     
     audio_config = speechsdk.audio.AudioConfig(filename=audio_filename)
@@ -73,7 +74,7 @@ def call_gpt(prompt, temperature=0.5):
         response = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Jsi expert na stylistiku a gramatiku českého jazyka. Tvé odpovědi jsou stručné a přímo k věci."},
+                {"role": "system", "content": "Jsi expert na stylistiku a gramatiku. Tvé odpovědi jsou stručné a přímo k věci."},
                 {"role": "user", "content": prompt}
             ],
             temperature=temperature
@@ -98,9 +99,9 @@ def process_audio():
 
     try:
         # Ochrana proti malým/prázdným souborům
-        if os.path.getsize(original_filepath) < 4096:
+        if os.path.getsize(original_filepath) < 2048:
             logging.warning("Nahraný soubor je příliš malý, pravděpodobně neplatný.")
-            return jsonify({"error": "Nahrávka byla příliš krátká nebo prázdná. Zkuste to prosím znovu."}), 400
+            return jsonify({"error": "Nahrávka byla příliš krátká nebo prázdná."}), 400
 
         convert_audio_with_ffmpeg(original_filepath, converted_filepath)
         original_text = transcribe_audio_azure(converted_filepath)
@@ -112,11 +113,9 @@ def process_audio():
         edited_text = call_gpt(cleanup_prompt, temperature=0.2)
         
         # Generování názvu pro historii
-        logging.info("Generuji název pro text...")
         title_prompt = f"Vytvoř velmi krátký a výstižný název (maximálně 5 slov) pro tento text. Odpověz POUZE samotným názvem, bez uvozovek a dalšího textu: '{edited_text[:500]}'"
         title = call_gpt(title_prompt, temperature=0.7)
         title = title.strip().replace('"', '')
-        logging.info(f"Vygenerovaný název: {title}")
 
         # Vytvoření unikátního ID
         unique_id = int(time.time() * 1000)
@@ -139,10 +138,20 @@ def process_audio():
 def manipulate_text():
     data = request.json
     text, action, style = data.get('text'), data.get('action'), data.get('style', '')
-    prompts = {"summarize": f"Vytvoř stručné shrnutí tohoto textu: '{text}'", "restyle": f"Přepiš tento text do {style} stylu: '{text}'", "expand": f"Rozšiř následující myšlenky a přidej relevantní detaily: '{text}'"}
+    
+    prompts = {
+        "summarize": f"Vytvoř stručné shrnutí tohoto textu: '{text}'",
+        "restyle": f"Přepiš tento text do profesionálního stylu: '{text}'",
+        "expand": f"Rozšiř následující myšlenky a přidej relevantní detaily: '{text}'",
+        "translate_en": f"Přelož následující český text do angličtiny. Odpověz pouze samotným překladem: '{text}'",
+        "twitter_post": f"Přeformuluj následující text do krátkého a úderného příspěvku pro sociální síť Twitter. Použij vhodné hashtagy. Výsledný text nesmí přesáhnout 280 znaků. Text: '{text}'"
+    }
+    
     prompt = prompts.get(action)
     if not prompt: return jsonify({"error": "Neznámá akce"}), 400
-    return jsonify({"text": call_gpt(prompt)})
+    
+    # Pro kreativní úpravy použijeme mírně vyšší teplotu
+    return jsonify({"text": call_gpt(prompt, temperature=0.7)})
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
