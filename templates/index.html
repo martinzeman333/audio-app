@@ -3,42 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Asistent</title>
+    <title>Audio Asistent Pro</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
-        <h1>🎙️ Audio Asistent</h1>
-        <p>Nahrajte svůj hlas, my ho převedeme na text a vylepšíme.</p>
+        <div class="header">
+            <h1>🎙️ Audio Asistent Pro</h1>
+            <p>Moderní nástroj pro převod řeči na text a jeho následnou úpravu.</p>
+        </div>
         
-        <div class="recorder">
-            <button id="recordButton">Nahrát</button>
-            <button id="stopButton" disabled>Zastavit</button>
+        <div class="card recorder">
+            <h2>1. Nahrávání</h2>
+            <p>Stiskněte tlačítko a začněte mluvit.</p>
+            <button id="recordButton">Spustit nahrávání</button>
+            <button id="stopButton" disabled>Zastavit a zpracovat</button>
         </div>
         
         <div id="loader" class="hidden">
             <div class="spinner"></div>
-            <p>Zpracovávám audio...</p>
+            <p>Analyzuji nahrávku, chvilku strpení...</p>
         </div>
 
         <div id="results" class="hidden">
-            <h3>Původní přepis z Azure</h3>
-            <p id="originalText"></p>
-            
-            <h3>Vylepšený text z ChatGPT</h3>
-            <textarea id="editedText" rows="12"></textarea>
-            
-            <div class="actions">
-                <h4>Další úpravy textu:</h4>
-                <button onclick="manipulateText('summarize')">Shrnout</button>
-                <button onclick="manipulateText('restyle', 'formálně')">Přestylizovat (formálně)</button>
-                <button onclick="manipulateText('expand')">Rozšířit</button>
+            <div class="card">
+                <h2>2. Výsledky</h2>
+                <h3>Původní přepis (Azure)</h3>
+                <p id="originalText" class="transcription-box"></p>
+                
+                <h3>Vylepšený text (ChatGPT)</h3>
+                <textarea id="editedText" rows="10"></textarea>
             </div>
             
-            <div class="sharing">
-                <h4>Sdílet výsledek:</h4>
+            <div class="card actions">
+                <h2>3. Další úpravy</h2>
+                <button onclick="manipulateText('summarize')">Shrnout</button>
+                <button onclick="manipulateText('restyle', 'formálně')">Přestylizovat (formálně)</button>
+                <button onclick="manipulateText('expand')">Rozšířit myšlenky</button>
+            </div>
+            
+            <div class="card sharing">
+                <h2>4. Sdílení</h2>
                 <input type="email" id="emailInput" placeholder="Zadejte cílový e-mail">
-                <button onclick="share('email')">Poslat E-mailem</button>
+                <button onclick="share('email')">Odeslat E-mailem</button>
             </div>
         </div>
     </div>
