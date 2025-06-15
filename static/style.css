@@ -53,7 +53,6 @@ body {
     border: 1px solid var(--border-color); box-shadow: var(--shadow);
 }
 .card h2 { margin-top: 0; font-weight: 500; color: var(--text-primary); }
-
 textarea {
     width: 100%; box-sizing: border-box;
     padding: 12px; border-radius: 10px; font-size: 1em; margin-bottom: 20px;
@@ -76,42 +75,42 @@ textarea:focus { outline: none; border-color: var(--accent-glow); box-shadow: 0 
     color: white; border-color: var(--accent-glow);
     background-color: rgba(255, 74, 161, 0.1); transform: translateY(-3px);
 }
-.action-divider {
-    width: 100%; text-align: center; color: var(--text-secondary);
-    font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;
-    margin-top: 10px;
+.custom-select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    width: 100%; padding: 12px 40px 12px 20px;
+    font-size: 1em; font-family: var(--font-family);
+    color: var(--text-primary); background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color); border-radius: 10px; cursor: pointer;
+    transition: all 0.2s ease;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23a0a8d3%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E');
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 20px;
+}
+.custom-select:hover, .custom-select:focus {
+    border-color: var(--accent-glow);
+}
+.custom-select:focus {
+    outline: none;
+    box-shadow: 0 0 15px rgba(255, 74, 161, 0.3);
+}
+.custom-select option {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
 }
 
 .hidden { display: none; }
-
-/* --- NOVÉ, VYLEPŠENÉ STYLY PRO LOADER --- */
 #loader {
-    position: fixed; /* Zobrazí se přes celou obrazovku */
-    top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 1000; /* Bude vždy navrchu */
-    
-    background-color: rgba(13, 15, 33, 0.8); /* Tmavé, poloprůhledné pozadí */
-    -webkit-backdrop-filter: blur(5px); /* Moderní rozmazaný efekt pro Safari */
-    backdrop-filter: blur(5px); /* Moderní rozmazaný efekt */
-
-    /* Perfektní vycentrování obsahu */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
+    background-color: rgba(13, 15, 33, 0.8);
+    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center; gap: 20px;
 }
-#loader p {
-    font-size: 1.2em;
-    color: var(--text-secondary);
-}
+#loader p { font-size: 1.2em; color: var(--text-secondary); }
 .spinner {
-    border: 5px solid #374151;
-    border-top: 5px solid var(--accent-glow);
-    border-radius: 50%;
-    width: 60px; /* Větší spinner */
-    height: 60px;
-    animation: spin 1s linear infinite;
-    margin: 0;
+    border: 5px solid #374151; border-top: 5px solid var(--accent-glow);
+    border-radius: 50%; width: 60px; height: 60px;
+    animation: spin 1s linear infinite; margin: 0;
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
