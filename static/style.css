@@ -100,3 +100,46 @@ textarea:focus { outline: none; border-color: var(--accent-glow); box-shadow: 0 
 }
 
 .hidden { display: none; }
+
+/* --- STYLY PRO PŘEKRYVNOU NAČÍTACÍ OBRAZOVKU --- */
+#loader {
+    position: fixed; /* Zobrazí se přes celou obrazovku */
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 1000; /* Bude vždy navrchu */
+    
+    background-color: rgba(13, 15, 33, 0.8); /* Tmavé, poloprůhledné pozadí */
+    -webkit-backdrop-filter: blur(5px); /* Moderní rozmazaný efekt pro Safari */
+    backdrop-filter: blur(5px); /* Moderní rozmazaný efekt */
+
+    /* Perfektní vycentrování obsahu */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    
+    /* Jemný přechod pro zobrazení a skrytí */
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+/* Když je loader skrytý, uděláme ho plně průhledným a neklikatelným */
+#loader.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#loader p {
+    font-size: 1.2em;
+    color: var(--text-secondary);
+}
+.spinner {
+    border: 5px solid #374151;
+    border-top: 5px solid var(--accent-glow);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin: 0;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
