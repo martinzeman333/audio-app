@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Asistent</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Audio Asistent</h1>
+        <p>Nahrajte svůj hlas, my ho převedeme na text a vylepšíme.</p>
+        
+        <div class="recorder">
+            <button id="recordButton">Nahrát</button>
+            <button id="stopButton" disabled>Zastavit</button>
+        </div>
+        
+        <div id="loader" class="hidden">
+            <div class="spinner"></div>
+            <p>Zpracovávám audio...</p>
+        </div>
+
+        <div id="results" class="hidden">
+            <h3>Původní přepis z Azure</h3>
+            <p id="originalText"></p>
+            
+            <h3>Vylepšený text z ChatGPT</h3>
+            <textarea id="editedText" rows="12"></textarea>
+            
+            <div class="actions">
+                <h4>Další úpravy textu:</h4>
+                <button onclick="manipulateText('summarize')">Shrnout</button>
+                <button onclick="manipulateText('restyle', 'formálně')">Přestylizovat (formálně)</button>
+                <button onclick="manipulateText('expand')">Rozšířit</button>
+            </div>
+            
+            <div class="sharing">
+                <h4>Sdílet výsledek:</h4>
+                <input type="email" id="emailInput" placeholder="Zadejte cílový e-mail">
+                <button onclick="share('email')">Poslat E-mailem</button>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
