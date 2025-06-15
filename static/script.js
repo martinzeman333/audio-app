@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Získání prvků z HTML
     const recordStopButton = document.getElementById('recordStopButton');
     const processButton = document.getElementById('processButton');
     const micIcon = document.getElementById('mic-icon');
@@ -15,17 +16,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const editedTextElem = document.getElementById('editedText');
     const aiActionSelect = document.getElementById('aiActionSelect');
 
+    // Proměnné pro stav a audio
     let recordingState = 'inactive'; // 'inactive', 'recording', 'paused'
-    let mediaRecorder, audioChunks = [], audioContext, analyser, source, animationFrameId;
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioContext;
+    let analyser;
+    let source;
+    let animationFrameId;
 
+    // --- Event Listenery ---
     if (!navigator.share) { nativeShareButton.classList.add('hidden'); }
-
     recordStopButton.addEventListener('click', handleRecordClick);
-    processButton.addEventListener('click', finishRecording);
+    processButton.addEventListener('click', finishRecording); // Zde voláme pouze stop()
     nativeShareButton.addEventListener('click', nativeShare);
     copyButton.addEventListener('click', copyTextToClipboard);
     editedTextElem.addEventListener('input', updateEmailLink);
     aiActionSelect.addEventListener('change', handleAiAction);
+    
+    // --- Hlavní logika ovládání ---
 
     function handleRecordClick() {
         if (recordingState === 'inactive') startRecording();
@@ -37,26 +46,52 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             resultsDiv.classList.add('hidden');
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
             recordingState = 'recording';
             updateButtonState(); 
             audioChunks = [];
             mediaRecorder = new MediaRecorder(stream);
+
+            // --- KLÍČOVÁ OPRAVA JE ZDE ---
+            // Event listenery se musí definovat PŘED spuštěním nahrávání.
+            // Logika pro odeslání je vrácena zpět do 'stop' listeneru.
+            mediaRecorder.addEventListener("dataavailable", event => {
+                audioChunks.push(event.data);
+            });
+
+            mediaRecorder.addEventListener("stop", () => {
+                // TENTO KÓD SE SPUSTÍ AŽ KDYŽ PROHLÍŽEČ VŠE DOKONČÍ
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                sendAudioToServer(audioBlob);
+
+                // Ukončíme stream a vizualizaci až zde
+                stream.getTracks().forEach(track => track.stop());
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                if (audioContext) audioContext.close();
+                clearCanvas();
+            });
+            // ------------------------------------
+
             mediaRecorder.start();
+
+            // Spuštění vizualizace
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             source = audioContext.createMediaStreamSource(stream);
             analyser = audioContext.createAnalyser();
             analyser.fftSize = 2048; 
             source.connect(analyser);
             draw();
-            mediaRecorder.addEventListener("dataavailable", event => { audioChunks.push(event.data); });
+            
         } catch (err) { 
             alert("Chyba: Nepodařilo se získat přístup k mikrofonu.");
             console.error("getUserMedia error:", err); 
+            recordingState = 'inactive'; // Reset stavu při chybě
+            updateButtonState();
         }
     }
 
     function pauseRecording() {
-        if (mediaRecorder) {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.pause();
             recordingState = 'paused';
             updateButtonState();
@@ -64,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resumeRecording() {
-        if (mediaRecorder) {
+        if (mediaRecorder && mediaRecorder.state === 'paused') {
             mediaRecorder.resume();
             recordingState = 'recording';
             updateButtonState();
@@ -72,23 +107,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function finishRecording() {
+        // Tato funkce teď už jen zavolá stop(). Zbytek se stane automaticky.
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
-            const stream = mediaRecorder.stream;
-            stream.getTracks().forEach(track => track.stop());
-
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-            sendAudioToServer(audioBlob);
-
             recordingState = 'inactive';
             updateButtonState();
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            if (audioContext) audioContext.close();
-            clearCanvas();
         }
     }
     
     function updateButtonState() {
+        // ... (tato funkce zůstává stejná)
         if (recordingState === 'inactive') {
             recordStopButton.classList.remove('is-recording');
             micIcon.classList.remove('hidden');
@@ -134,6 +162,8 @@ document.addEventListener('DOMContentLoaded', () => {
             processButton.disabled = false;
         }
     }
+    
+    // --- Zbytek souboru (AI úpravy, sdílení, vizualizace) ---
 
     function handleAiAction(event) {
         const selectedAction = event.target.value;
@@ -142,7 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
             event.target.selectedIndex = 0;
         }
     }
-
     async function manipulateText(action, style = '') {
         const text = editedTextElem.value;
         loaderText.textContent = 'Komunikuji s AI...';
@@ -158,13 +187,11 @@ document.addEventListener('DOMContentLoaded', () => {
             loader.classList.add('hidden');
         }
     }
-
     function updateEmailLink() {
         const text = editedTextElem.value;
         const subject = "Přepsaný text z Audio Asistenta";
         emailLink.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
     }
-
     function nativeShare() {
         if (navigator.share) {
             navigator.share({
@@ -173,7 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch((error) => console.log('Chyba při sdílení:', error));
         }
     }
-
     function copyTextToClipboard() {
         navigator.clipboard.writeText(editedTextElem.value).then(() => {
             const originalIcon = copyButton.innerHTML;
@@ -181,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => { copyButton.innerHTML = originalIcon; }, 2000);
         }, (err) => { alert('Chyba při kopírování textu: ', err); });
     }
-
     function draw() {
         animationFrameId = requestAnimationFrame(draw);
         if (!analyser) return;
@@ -206,6 +231,5 @@ document.addEventListener('DOMContentLoaded', () => {
         canvasCtx.lineTo(visualizer.width, visualizer.height / 2); 
         canvasCtx.stroke();
     }
-    
     function clearCanvas() { canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height); }
 });
