@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loader = document.getElementById('loader');
     const resultsDiv = document.getElementById('results');
     const editedTextElem = document.getElementById('editedText');
+    const aiActionSelect = document.getElementById('aiActionSelect');
 
     // Proměnné pro stav a audio
     let isRecording = false;
@@ -30,8 +31,17 @@ document.addEventListener('DOMContentLoaded', () => {
     nativeShareButton.addEventListener('click', nativeShare);
     copyButton.addEventListener('click', copyTextToClipboard);
     editedTextElem.addEventListener('input', updateEmailLink);
+    aiActionSelect.addEventListener('change', handleAiAction);
 
     // --- Definice funkcí ---
+
+    function handleAiAction(event) {
+        const selectedAction = event.target.value;
+        if (selectedAction) {
+            manipulateText(selectedAction);
+            event.target.selectedIndex = 0; // Resetuje menu zpět na výchozí text
+        }
+    }
 
     function updateEmailLink() {
         const text = editedTextElem.value;
@@ -56,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, (err) => { alert('Chyba při kopírování textu: ', err); });
     }
 
-    window.manipulateText = async function(action, style = '') {
+    async function manipulateText(action, style = '') {
         const text = editedTextElem.value;
         loader.classList.remove('hidden');
         try {
@@ -82,7 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             if (data.error) { throw new Error(data.error); }
             
-            // TOTO JE OPRAVA - pracujeme už jen s jedním textovým polem
             editedTextElem.value = data.edited_text; 
             
             resultsDiv.classList.remove('hidden');
@@ -128,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function draw() {
         animationFrameId = requestAnimationFrame(draw);
+        if (!analyser) return; // Pojistka pro případ, že se funkce zavolá po zastavení
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyser.getByteTimeDomainData(dataArray);
