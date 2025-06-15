@@ -20,8 +20,8 @@
             <div class="recorder-controls">
                 <button id="recordStopButton">
                     <span class="icon-wrapper">
-                        <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-                        <svg id="stop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px" class="hidden"><path d="M6 6h12v12H6z"/></svg>
+                        <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                        <svg id="stop-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><circle cx="12" cy="12" r="10"/><rect width="6" height="6" x="9" y="9"/></svg>
                     </span>
                     <span id="button-text">Nahrát</span>
                 </button>
@@ -37,24 +37,17 @@
         <div id="results" class="hidden">
              <div class="card">
                 <h2>2. Výsledky</h2>
-                <h3>Původní přepis (Azure)</h3>
+                <h3>Původní přepis</h3>
                 <p id="originalText" class="transcription-box"></p>
-                
-                <h3>Vylepšený text (ChatGPT)</h3>
-                <textarea id="editedText" rows="10"></textarea>
+                <h3>Vylepšený text</h3>
+                <textarea id="editedText" rows="10" placeholder="Zde se objeví text upravený umělou inteligencí..."></textarea>
             </div>
             
             <div class="card actions">
                 <h2>3. Další úpravy</h2>
                 <button onclick="manipulateText('summarize')">Shrnout</button>
-                <button onclick="manipulateText('restyle', 'formálně')">Přestylizovat (formálně)</button>
-                <button onclick="manipulateText('expand')">Rozšířit myšlenky</button>
-            </div>
-            
-            <div class="card sharing">
-                <h2>4. Sdílení</h2>
-                <input type="email" id="emailInput" placeholder="Zadejte cílový e-mail">
-                <button onclick="share('email')">Odeslat E-mailem</button>
+                <button onclick="manipulateText('restyle', 'formálně')">Formálně</button>
+                <button onclick="manipulateText('expand')">Rozšířit</button>
             </div>
         </div>
     </div>
