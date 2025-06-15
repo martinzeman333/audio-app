@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Získání prvků z HTML
     const recordStopButton = document.getElementById('recordStopButton');
-    const processButton = document.getElementById('processButton'); // Nové tlačítko
+    const processButton = document.getElementById('processButton');
     const micIcon = document.getElementById('mic-icon');
     const pauseIcon = document.getElementById('pause-icon');
     const statusText = document.getElementById('statusText');
@@ -15,81 +14,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsDiv = document.getElementById('results');
     const editedTextElem = document.getElementById('editedText');
     const aiActionSelect = document.getElementById('aiActionSelect');
-    const restoreBanner = document.getElementById('restore-banner');
-    const restoreYes = document.getElementById('restore-yes');
-    const restoreNo = document.getElementById('restore-no');
 
-    // Proměnné pro stav a audio
     let recordingState = 'inactive'; // 'inactive', 'recording', 'paused'
-    let mediaRecorder;
-    let audioChunks = [];
-    let audioContext;
-    let analyser;
-    let source;
-    let animationFrameId;
+    let mediaRecorder, audioChunks = [], audioContext, analyser, source, animationFrameId;
 
-    // --- Nová logika pro ukládání a obnovu ---
-    function checkForSavedText() {
-        const savedText = localStorage.getItem('aiAssistantText');
-        if (savedText) {
-            restoreBanner.classList.remove('hidden');
-        }
-    }
-
-    function saveText() {
-        if (editedTextElem.value) {
-            localStorage.setItem('aiAssistantText', editedTextElem.value);
-        } else {
-            localStorage.removeItem('aiAssistantText');
-        }
-    }
-    
-    restoreYes.addEventListener('click', () => {
-        const savedText = localStorage.getItem('aiAssistantText');
-        if (savedText) {
-            editedTextElem.value = savedText;
-            resultsDiv.classList.remove('hidden');
-            updateEmailLink();
-        }
-        restoreBanner.classList.add('hidden');
-    });
-
-    restoreNo.addEventListener('click', () => {
-        localStorage.removeItem('aiAssistantText');
-        restoreBanner.classList.add('hidden');
-    });
-    
-    // --- Hlavní event listenery ---
     if (!navigator.share) { nativeShareButton.classList.add('hidden'); }
+
     recordStopButton.addEventListener('click', handleRecordClick);
-    processButton.addEventListener('click', finishRecording); // Nový listener
+    processButton.addEventListener('click', finishRecording);
     nativeShareButton.addEventListener('click', nativeShare);
     copyButton.addEventListener('click', copyTextToClipboard);
-    editedTextElem.addEventListener('input', () => {
-        updateEmailLink();
-        saveText(); // Ukládáme při každé manuální úpravě
-    });
+    editedTextElem.addEventListener('input', updateEmailLink);
     aiActionSelect.addEventListener('change', handleAiAction);
-    
-    // Zkontrolujeme neuložený text při startu
-    checkForSavedText();
 
-    // --- NOVÁ LOGIKA PRO OVLÁDÁNÍ NAHRÁVÁNÍ ---
     function handleRecordClick() {
-        if (recordingState === 'inactive') {
-            startRecording();
-        } else if (recordingState === 'recording') {
-            pauseRecording();
-        } else if (recordingState === 'paused') {
-            resumeRecording();
-        }
+        if (recordingState === 'inactive') startRecording();
+        else if (recordingState === 'recording') pauseRecording();
+        else if (recordingState === 'paused') resumeRecording();
     }
 
     async function startRecording() {
         try {
             resultsDiv.classList.add('hidden');
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            isRecording = true;
             recordingState = 'recording';
             updateButtonState(); 
             audioChunks = [];
@@ -125,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function finishRecording() {
-        if (mediaRecorder) {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
             const stream = mediaRecorder.stream;
             stream.getTracks().forEach(track => track.stop());
@@ -135,14 +82,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             recordingState = 'inactive';
             updateButtonState();
-            if (animationFrameId) { cancelAnimationFrame(animationFrameId); }
-            if (audioContext) { audioContext.close(); }
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (audioContext) audioContext.close();
             clearCanvas();
         }
     }
     
-    // --- Ostatní funkce ---
-
     function updateButtonState() {
         if (recordingState === 'inactive') {
             recordStopButton.classList.remove('is-recording');
@@ -181,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
             editedTextElem.value = data.edited_text; 
             resultsDiv.classList.remove('hidden');
             updateEmailLink();
-            saveText(); // Uložíme úspěšný výsledek
         } catch (error) {
             alert(`Došlo k chybě při zpracování: ${error.message}`);
         } finally {
@@ -191,7 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Zde vkládáme zbylé funkce, které se nemění...
     function handleAiAction(event) {
         const selectedAction = event.target.value;
         if (selectedAction) {
@@ -199,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
             event.target.selectedIndex = 0;
         }
     }
+
     async function manipulateText(action, style = '') {
         const text = editedTextElem.value;
         loaderText.textContent = 'Komunikuji s AI...';
@@ -208,18 +152,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             editedTextElem.value = data.text;
             updateEmailLink();
-            saveText();
         } catch (error) {
             alert('Došlo k chybě při úpravě textu.');
         } finally {
             loader.classList.add('hidden');
         }
     }
+
     function updateEmailLink() {
         const text = editedTextElem.value;
         const subject = "Přepsaný text z Audio Asistenta";
         emailLink.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
     }
+
     function nativeShare() {
         if (navigator.share) {
             navigator.share({
@@ -228,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch((error) => console.log('Chyba při sdílení:', error));
         }
     }
+
     function copyTextToClipboard() {
         navigator.clipboard.writeText(editedTextElem.value).then(() => {
             const originalIcon = copyButton.innerHTML;
@@ -235,6 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => { copyButton.innerHTML = originalIcon; }, 2000);
         }, (err) => { alert('Chyba při kopírování textu: ', err); });
     }
+
     function draw() {
         animationFrameId = requestAnimationFrame(draw);
         if (!analyser) return;
@@ -259,5 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
         canvasCtx.lineTo(visualizer.width, visualizer.height / 2); 
         canvasCtx.stroke();
     }
+    
     function clearCanvas() { canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height); }
 });
