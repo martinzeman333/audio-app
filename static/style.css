@@ -1,21 +1,21 @@
 :root {
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --record-color: #16a34a;
-    --stop-color: #dc2626;
-    --background-color: #111827;
-    --card-background: #1f2937;
-    --text-color: #f9fafb;
-    --light-text-color: #9ca3af;
-    --border-color: #374151;
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    --font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --bg-dark: #0d0f21;
+    --bg-card: linear-gradient(145deg, #1e2242, #161a33);
+    --text-primary: #ffffff;
+    --text-secondary: #a0a8d3;
+    --border-color: rgba(67, 75, 127, 0.5);
+    
+    --accent-glow: #ff4aa1;
+    --accent-gradient: linear-gradient(90deg, #6e56ff, #ff4aa1);
+    
+    --font-family: 'Poppins', sans-serif;
+    --shadow: 0px 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 body {
     font-family: var(--font-family);
-    background-color: var(--background-color);
-    color: var(--text-color);
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
     margin: 0;
     padding: 30px 15px;
     display: grid;
@@ -25,80 +25,116 @@ body {
 
 .container {
     width: 100%;
-    max-width: 700px;
+    max-width: 600px;
 }
 
-.header { text-align: center; margin-bottom: 30px; }
-.header h1 { color: var(--text-color); font-weight: 600; }
-.header p { font-size: 1.1em; color: var(--light-text-color); }
+.header { text-align: center; margin-bottom: 40px; }
+.header h1 { font-weight: 600; }
+.header p { color: var(--text-secondary); font-size: 1.1em; }
 
+/* --- Sekce nahrávání a vizualizace --- */
+.recorder-visualizer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 25px;
+    margin-bottom: 40px;
+}
+#audioVisualizer {
+    width: 100%;
+    height: 80px;
+    display: block;
+}
+#recordStopButton {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-gradient);
+    color: white;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    box-shadow: 0 0 20px var(--accent-glow), 0 0 30px var(--accent-glow) inset;
+    transition: all 0.3s ease;
+}
+#recordStopButton:hover:not(:disabled) {
+    transform: scale(1.1);
+}
+#recordStopButton.is-recording {
+    animation: pulse 1.5s infinite;
+}
+#recordStopButton:disabled {
+    background: #5a618a;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+#statusText {
+    color: var(--text-secondary);
+    font-size: 1em;
+    transition: color 0.3s ease;
+}
+@keyframes pulse {
+    0% { box-shadow: 0 0 20px var(--accent-glow), 0 0 30px var(--accent-glow) inset; }
+    50% { box-shadow: 0 0 35px var(--accent-glow), 0 0 45px var(--accent-glow) inset; }
+    100% { box-shadow: 0 0 20px var(--accent-glow), 0 0 30px var(--accent-glow) inset; }
+}
+
+/* --- Karty pro výsledky --- */
 .card {
-    background: var(--card-background);
-    border-radius: 16px;
+    background: var(--bg-card);
+    border-radius: 20px;
     padding: 25px 30px;
     margin-bottom: 25px;
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow);
 }
-.card h2 { margin-top: 0; color: var(--text-color); border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; font-weight: 500;}
-.card h3 { margin-top: 20px; margin-bottom: 10px; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; color: var(--light-text-color); }
-
-.recorder-controls { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 20px; }
-#recordStopButton {
-    width: 160px; height: 55px; display: flex; align-items: center; justify-content: center; gap: 12px;
-    font-size: 18px; font-weight: 500; border-radius: 30px; border: none;
-    color: white; cursor: pointer; transition: all 0.3s ease;
-    background-color: var(--record-color);
+.card h2 {
+    margin-top: 0;
+    font-weight: 500;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
-#recordStopButton.is-recording {
-    background-color: var(--stop-color);
-    animation: pulse 1.5s infinite;
-}
-#recordStopButton:disabled { background-color: #4b5563; cursor: not-allowed; animation: none; }
-#recordStopButton:hover:not(:disabled) { transform: scale(1.05); }
-
-.timer { font-size: 26px; font-weight: 500; color: var(--light-text-color); min-width: 70px; text-align: center; }
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
-    70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+.card h3 {
+    margin-top: 20px; margin-bottom: 10px; font-size: 0.9em;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-secondary);
 }
 
-textarea, input[type="email"] {
-    width: calc(100% - 24px); padding: 12px; border-radius: 8px; font-size: 1em;
-    background-color: #374151; border: 1px solid #4b5563; color: var(--text-color);
-    font-family: var(--font-family); transition: border-color 0.2s, box-shadow 0.2s;
+textarea {
+    width: calc(100% - 24px); padding: 12px; border-radius: 10px; font-size: 1em;
+    background-color: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color);
+    color: var(--text-primary); font-family: var(--font-family);
+    transition: all 0.2s ease;
 }
-textarea:focus, input[type="email"]:focus {
-    outline: none; border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
+textarea:focus {
+    outline: none; border-color: var(--accent-glow);
+    box-shadow: 0 0 15px rgba(255, 74, 161, 0.3);
 }
-textarea::placeholder { color: #6b7280; }
+.transcription-box {
+    background-color: rgba(0, 0, 0, 0.2); padding: 12px;
+    border-radius: 10px; min-height: 30px; color: #d1d5db;
+    border: 1px solid var(--border-color);
+}
 
-.transcription-box { background-color: #374151; padding: 12px; border-radius: 8px; min-height: 30px; color: #d1d5db; font-style: italic; }
-
+.actions { text-align: center; }
 .actions button {
-    background-color: transparent; border: 1px solid var(--border-color);
-    color: var(--light-text-color); padding: 10px 20px; font-size: 14px;
-    border-radius: 8px; font-family: var(--font-family); transition: all 0.2s ease-in-out;
+    background: transparent; border: 1px solid var(--border-color);
+    color: var(--text-secondary); padding: 10px 20px; font-size: 14px;
+    border-radius: 20px; font-family: var(--font-family); transition: all 0.2s ease-in-out;
 }
 .actions button:hover:not(:disabled) {
-    background-color: var(--primary-color);
-    color: white; border-color: var(--primary-color); transform: translateY(-2px);
+    color: white; border-color: var(--accent-glow);
+    background-color: rgba(255, 74, 161, 0.1);
 }
 
 .hidden { display: none; }
 .loader { text-align: center; padding: 40px; }
 .spinner {
-    border: 5px solid #374151; border-top: 5px solid var(--primary-color);
+    border: 5px solid #374151;
+    border-top: 5px solid var(--accent-glow);
     border-radius: 50%; width: 50px; height: 50px;
     animation: spin 1s linear infinite; margin: 0 auto 15px;
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-@media (max-width: 768px) {
-    body { padding: 15px; }
-    .card { padding: 20px; }
-    .header h1 { font-size: 1.8em; }
-    .actions button { width: 100%; margin: 5px 0; }
-}
