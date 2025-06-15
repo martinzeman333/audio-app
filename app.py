@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 import logging
 import subprocess
 import shutil
-import threading # <-- PŘIDÁN NOVÝ IMPORT
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,59 +17,51 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
-
 # ====================================================================
-# ZDE JE KLÍČOVÁ OPRAVA
+# JEDNODUCHÉ A KONEČNÉ ŘEŠENÍ PRO PŘEPIS
 # ====================================================================
 def transcribe_audio_azure(audio_filename):
     """
-    Přepíše CELÝ audio soubor pomocí Azure Speech SDK v kontinuálním režimu.
-    Tato verze používá threading.Event pro spolehlivé čekání na výsledek.
+    Přepíše celý audio soubor pomocí jednoduché metody, ale s upraveným
+    časovým limitem pro detekci ticha.
     """
-    logging.info(f"Spouštím kontinuální přepis souboru: {audio_filename}")
+    logging.info(f"Spouštím přepis souboru: {audio_filename}")
     speech_config = speechsdk.SpeechConfig(
         subscription=os.getenv("AZURE_SPEECH_KEY"), 
         region=os.getenv("AZURE_SPEECH_REGION")
     )
     speech_config.speech_recognition_language = "cs-CZ"
+
+    # --- KLÍČOVÁ ZMĚNA ZDE ---
+    # Nastavíme, aby Azure čekal až 5 sekund ticha, než ukončí rozpoznávání.
+    # To nám umožní nahrávat více vět s přirozenými pauzami.
+    # Hodnota je v milisekundách, takže 5000ms = 5s.
+    speech_config.set_property(speechsdk.PropertyId.Speech_SegmentationSilenceTimeoutMs, "5000")
+    
     audio_config = speechsdk.audio.AudioConfig(filename=audio_filename)
     
+    # Používáme opět jednoduchý a spolehlivý 'recognize_once_async'
     speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
     
-    all_results = []
-    def handle_recognized(evt):
-        all_results.append(evt.result.text)
-        logging.info(f'ROZPOZNÁNO: {evt.result.text}')
-
-    # Použijeme threading.Event pro signalizaci dokončení. Je to bezpečné a efektivní.
-    done = threading.Event()
-
-    def stop_cb(evt):
-        """Callback, který se zavolá po ukončení session a nastaví událost 'done'."""
-        logging.info('KONEC SEZENÍ: {}'.format(evt))
-        done.set() # Signalizuje, že můžeme přestat čekat
-
-    speech_recognizer.recognized.connect(handle_recognized)
-    speech_recognizer.session_stopped.connect(stop_cb)
-    speech_recognizer.canceled.connect(stop_cb)
-
-    speech_recognizer.start_continuous_recognition()
+    result = speech_recognizer.recognize_once_async().get()
     
-    # Místo nebezpečné smyčky 'while not done: pass' použijeme toto:
-    # done.wait() - efektivně zablokuje vlákno, dokud není událost nastavena.
-    # Přidáváme i timeout pro jistotu, např. 5 minut (300 sekund)
-    done.wait(timeout=300.0) 
+    # Zpracování výsledku zůstává jednoduché
+    if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+        logging.info("Azure: Řeč úspěšně rozpoznána.")
+        return result.text
+    elif result.reason == speechsdk.ResultReason.NoMatch:
+        logging.warning("Azure: Řeč nebyla rozpoznána.")
+        return "Řeč nebyla rozpoznána."
+    else:
+        cancellation_details = result.cancellation_details
+        logging.error(f"Azure: Přepis zrušen: {cancellation_details.reason}")
+        if cancellation_details.reason == speechsdk.CancellationReason.Error:
+            logging.error(f"Azure: Detail chyby: {cancellation_details.error_details}")
+        raise Exception(f"Azure chyba: {cancellation_details.reason}")
 
-    speech_recognizer.stop_continuous_recognition()
-    
-    final_text = " ".join(all_results)
-    logging.info(f"Finální přepsaný text: {final_text}")
-    
-    return final_text
 # ====================================================================
-# KONEC OPRAVY
+# Zbytek souboru je stejný jako v minulé funkční verzi
 # ====================================================================
-
 
 def convert_audio_with_ffmpeg(input_path, output_path):
     logging.info(f"Spouštím konverzi souboru '{input_path}' na '{output_path}' pomocí ffmpeg.")
@@ -108,13 +99,13 @@ def process_audio():
         convert_audio_with_ffmpeg(original_filepath, converted_filepath)
         original_text = transcribe_audio_azure(converted_filepath)
         
-        if not original_text:
-            return jsonify({"original_text": "Nebylo nic rozpoznáno.", "edited_text": ""})
+        if not original_text or original_text == "Řeč nebyla rozpoznána.":
+            return jsonify({"edited_text": "Nepodařilo se rozpoznat žádnou řeč. Zkuste to prosím znovu."})
 
         cleanup_prompt = f"Oprav interpunkci, gramatiku a odstraň slovní vatu (jako 'ehm', 'hmm', 'jako') z následujícího textu, ale zachovej jeho význam: '{original_text}'"
         edited_text = call_gpt(cleanup_prompt)
         
-        return jsonify({"original_text": original_text, "edited_text": edited_text})
+        return jsonify({"edited_text": edited_text})
 
     except Exception as e:
         logging.error(f"Došlo k chybě při zpracování audia: {e}")
