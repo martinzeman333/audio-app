@@ -1,21 +1,22 @@
 // Získání prvků z HTML
 const recordStopButton = document.getElementById('recordStopButton');
-const buttonText = document.getElementById('button-text');
-const micIcon = document.getElementById('mic-icon');
-const stopIcon = document.getElementById('stop-icon');
-const timerElement = document.getElementById('timer');
+const statusText = document.getElementById('statusText');
+const visualizer = document.getElementById('audioVisualizer');
+const canvasCtx = visualizer.getContext('2d');
 
 const loader = document.getElementById('loader');
 const resultsDiv = document.getElementById('results');
 const originalTextElem = document.getElementById('originalText');
 const editedTextElem = document.getElementById('editedText');
 
-// Proměnné pro stav nahrávání
+// Proměnné pro stav a audio
 let isRecording = false;
 let mediaRecorder;
 let audioChunks = [];
-let timerInterval;
-let seconds = 0;
+let audioContext;
+let analyser;
+let source;
+let animationFrameId;
 
 // Hlavní událost pro kliknutí na tlačítko
 recordStopButton.addEventListener('click', () => {
@@ -32,25 +33,31 @@ async function startRecording() {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         isRecording = true;
         updateButtonState(true);
-        startTimer();
 
         audioChunks = [];
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.start();
+
+        // --- Logika pro vizualizaci ---
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+        draw(); // Spuštění vizualizace
 
         mediaRecorder.addEventListener("dataavailable", event => {
             audioChunks.push(event.data);
         });
 
         mediaRecorder.addEventListener("stop", () => {
-            // Zastavíme stream, aby ikona mikrofonu v prohlížeči zmizela
             stream.getTracks().forEach(track => track.stop());
             const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
             sendAudioToServer(audioBlob);
         });
 
     } catch (err) {
-        alert("Chyba: Nepodařilo se získat přístup k mikrofonu. Zkontrolujte prosím oprávnění v nastavení prohlížeče.");
+        alert("Chyba: Nepodařilo se získat přístup k mikrofonu.");
         console.error("getUserMedia error:", err);
     }
 }
@@ -61,49 +68,68 @@ function stopRecording() {
         mediaRecorder.stop();
         isRecording = false;
         updateButtonState(false);
-        stopTimer();
+        
+        // Zastavení vizualizace
+        cancelAnimationFrame(animationFrameId);
+        audioContext.close();
+        clearCanvas();
     }
+}
+
+// Funkce pro vizualizaci zvuku na canvasu
+function draw() {
+    animationFrameId = requestAnimationFrame(draw);
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteTimeDomainData(dataArray);
+
+    canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height);
+    
+    // Vytvoření gradientu pro čáru
+    const gradient = canvasCtx.createLinearGradient(0, 0, visualizer.width, 0);
+    gradient.addColorStop(0, '#6e56ff');
+    gradient.addColorStop(1, '#ff4aa1');
+
+    canvasCtx.lineWidth = 2;
+    canvasCtx.strokeStyle = gradient;
+    canvasCtx.beginPath();
+
+    const sliceWidth = visualizer.width * 1.0 / bufferLength;
+    let x = 0;
+
+    for (let i = 0; i < bufferLength; i++) {
+        const v = dataArray[i] / 128.0;
+        const y = v * visualizer.height / 2;
+        if (i === 0) {
+            canvasCtx.moveTo(x, y);
+        } else {
+            canvasCtx.lineTo(x, y);
+        }
+        x += sliceWidth;
+    }
+    canvasCtx.lineTo(visualizer.width, visualizer.height / 2);
+    canvasCtx.stroke();
+}
+
+function clearCanvas() {
+    canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height);
 }
 
 // Funkce pro aktualizaci vzhledu tlačítka
 function updateButtonState(recording) {
-    if (recording) {
-        recordStopButton.classList.add('is-recording');
-        buttonText.textContent = 'Zastavit';
-        micIcon.classList.add('hidden');
-        stopIcon.classList.remove('hidden');
-    } else {
-        recordStopButton.classList.remove('is-recording');
-        buttonText.textContent = 'Nahrát';
-        micIcon.classList.remove('hidden');
-        stopIcon.classList.add('hidden');
-    }
+    recordStopButton.classList.toggle('is-recording', recording);
+    statusText.textContent = recording ? 'Nahrávám...' : 'Stiskněte pro nahrávání';
 }
 
-// Funkce pro časovač
-function startTimer() {
-    timerElement.textContent = '00:00';
-    seconds = 0;
-    timerInterval = setInterval(() => {
-        seconds++;
-        const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
-        const secs = (seconds % 60).toString().padStart(2, '0');
-        timerElement.textContent = `${minutes}:${secs}`;
-    }, 1000);
-}
+// --- Ostatní funkce (odeslání, manipulace) zůstávají stejné ---
 
-function stopTimer() {
-    clearInterval(timerInterval);
-}
-
-// Funkce pro odeslání audia na server
 async function sendAudioToServer(audioBlob) {
     const formData = new FormData();
     formData.append('audio_file', audioBlob, 'recording.wav');
 
     loader.classList.remove('hidden');
     resultsDiv.classList.add('hidden');
-    recordStopButton.disabled = true; // Zamkneme tlačítko během zpracování
+    recordStopButton.disabled = true;
 
     try {
         const response = await fetch('/process-audio', {
@@ -111,9 +137,7 @@ async function sendAudioToServer(audioBlob) {
             body: formData,
         });
         const data = await response.json();
-        if (data.error) {
-            throw new Error(data.error);
-        }
+        if (data.error) { throw new Error(data.error); }
         originalTextElem.textContent = data.original_text;
         editedTextElem.value = data.edited_text;
         resultsDiv.classList.remove('hidden');
@@ -121,12 +145,10 @@ async function sendAudioToServer(audioBlob) {
         alert(`Došlo k chybě při zpracování: ${error.message}`);
     } finally {
         loader.classList.add('hidden');
-        recordStopButton.disabled = false; // Odemkneme tlačítko
+        recordStopButton.disabled = false;
     }
 }
 
-
-// --- Funkce pro další úpravy a sdílení (zůstávají stejné) ---
 async function manipulateText(action, style = '') {
     const text = editedTextElem.value;
     loader.classList.remove('hidden');
@@ -142,27 +164,5 @@ async function manipulateText(action, style = '') {
         alert('Došlo k chybě při úpravě textu.');
     } finally {
         loader.classList.add('hidden');
-    }
-}
-
-async function share(method) {
-    const text = editedTextElem.value;
-    const recipient = document.getElementById('emailInput').value;
-    
-    if (method === 'email' && !recipient) {
-        alert('Prosím, zadejte e-mailovou adresu.');
-        return;
-    }
-
-    try {
-        const response = await fetch('/share', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, recipient, method })
-        });
-        const data = await response.json();
-        alert(data.message);
-    } catch (error) {
-        alert('Došlo k chybě při sdílení.');
     }
 }
