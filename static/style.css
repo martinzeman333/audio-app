@@ -2,6 +2,8 @@
 :root {
     --primary-color: #007aff;
     --primary-hover: #005ecb;
+    --record-color: #28a745;
+    --stop-color: #dc3545;
     --background-color: #f0f2f5;
     --card-background: #ffffff;
     --text-color: #333;
@@ -26,19 +28,9 @@ body {
     width: 100%;
     max-width: 750px;
 }
-
-.header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-.header h1 {
-    color: var(--primary-color);
-    font-weight: 600;
-}
-.header p {
-    font-size: 1.1em;
-    color: var(--light-text-color);
-}
+.header { text-align: center; margin-bottom: 30px; }
+.header h1 { color: var(--primary-color); font-weight: 600; }
+.header p { font-size: 1.1em; color: var(--light-text-color); }
 
 /* --- Kartový design --- */
 .card {
@@ -49,57 +41,67 @@ body {
     box-shadow: var(--shadow);
     border: 1px solid var(--border-color);
 }
-.card h2 {
-    margin-top: 0;
-    color: var(--primary-color);
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 10px;
-    margin-bottom: 15px;
+.card h2 { margin-top: 0; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; }
+.card h3 { margin-top: 20px; margin-bottom: 8px; font-size: 1em; font-weight: 500; }
+
+/* --- NOVÉ STYLY PRO OVLÁDÁNÍ NAHRÁVÁNÍ --- */
+.recorder-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 20px;
 }
-.card h3 {
-    margin-top: 20px;
-    margin-bottom: 8px;
-    font-size: 1em;
-    font-weight: 500;
+#recordStopButton {
+    width: 150px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    background-color: var(--record-color);
+}
+#recordStopButton.is-recording {
+    background-color: var(--stop-color);
+    animation: pulse 1.5s infinite;
+}
+#recordStopButton:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    animation: none;
+}
+#recordStopButton .icon-wrapper {
+    display: flex;
+    align-items: center;
+}
+.timer {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--light-text-color);
+    min-width: 70px;
+    text-align: center;
+}
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
 }
 
-/* --- Tlačítka --- */
-button {
-    padding: 12px 22px;
-    border: none;
-    background-color: var(--primary-color);
-    color: white;
+/* --- Tlačítka v sekcích 3 a 4 --- */
+.actions button, .sharing button {
+    padding: 10px 20px;
+    font-size: 15px;
     border-radius: 8px;
-    cursor: pointer;
-    margin: 5px;
-    font-size: 16px;
-    font-weight: 500;
     font-family: 'Poppins', sans-serif;
     transition: all 0.2s ease-in-out;
 }
-button:hover:not(:disabled) {
-    background-color: var(--primary-hover);
+.actions button:hover:not(:disabled), .sharing button:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 122, 255, 0.2);
-}
-button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-}
-
-#recordButton {
-    background-color: #28a745; /* Zelená pro start */
-}
-#recordButton:hover:not(:disabled) {
-    background-color: #218838;
-    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
-}
-#stopButton {
-    background-color: #dc3545; /* Červená pro stop */
-}
-#stopButton:hover:not(:disabled) {
-    background-color: #c82333;
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
 }
 
 /* --- Formulářové prvky a texty --- */
@@ -118,32 +120,19 @@ textarea:focus, input[type="email"]:focus {
     box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25);
 }
 .transcription-box {
-    background-color: #f8f9fa;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    min-height: 30px;
-    color: var(--light-text-color);
+    background-color: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); min-height: 30px; color: var(--light-text-color);
 }
 
 /* --- Loader animace --- */
 .hidden { display: none; }
 .loader { text-align: center; padding: 40px; }
-.spinner {
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid var(--primary-color);
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 15px;
-}
+.spinner { border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* --- Responzivita pro mobilní zařízení --- */
+/* --- Responzivita --- */
 @media (max-width: 768px) {
     body { padding: 15px; }
     .card { padding: 20px; }
     .header h1 { font-size: 1.8em; }
-    button { width: 100%; margin-left: 0; margin-right: 0; }
+    .actions button, .sharing button { width: 100%; margin: 5px 0; }
 }
