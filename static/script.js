@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Získání prvků z HTML až po načtení stránky
     const recordStopButton = document.getElementById('recordStopButton');
     const statusText = document.getElementById('statusText');
     const visualizer = document.getElementById('audioVisualizer');
@@ -12,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const editedTextElem = document.getElementById('editedText');
     const aiActionSelect = document.getElementById('aiActionSelect');
 
-    // Proměnné pro stav a audio
     let isRecording = false;
     let mediaRecorder;
     let audioChunks = [];
@@ -21,25 +19,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let source;
     let animationFrameId;
 
-    // Skryjeme nativní sdílení, pokud není podporováno
     if (!navigator.share) {
         nativeShareButton.classList.add('hidden');
     }
 
-    // Připojení událostí k prvkům
     recordStopButton.addEventListener('click', () => { if (isRecording) { stopRecording(); } else { startRecording(); } });
     nativeShareButton.addEventListener('click', nativeShare);
     copyButton.addEventListener('click', copyTextToClipboard);
     editedTextElem.addEventListener('input', updateEmailLink);
     aiActionSelect.addEventListener('change', handleAiAction);
 
-    // --- Definice funkcí ---
-
     function handleAiAction(event) {
         const selectedAction = event.target.value;
         if (selectedAction) {
             manipulateText(selectedAction);
-            event.target.selectedIndex = 0; // Resetuje menu zpět na výchozí text
+            event.target.selectedIndex = 0;
         }
     }
 
@@ -69,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function manipulateText(action, style = '') {
         const text = editedTextElem.value;
         loader.classList.remove('hidden');
+        resultsDiv.classList.add('hidden'); // Skryjeme výsledky během AI úpravy
         try {
             const response = await fetch('/manipulate-text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, action, style }) });
             const data = await response.json();
@@ -78,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Došlo k chybě při úpravě textu.');
         } finally {
             loader.classList.add('hidden');
+            resultsDiv.classList.remove('hidden'); // Znovu zobrazíme výsledky
         }
     }
 
@@ -137,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function draw() {
         animationFrameId = requestAnimationFrame(draw);
-        if (!analyser) return; // Pojistka pro případ, že se funkce zavolá po zastavení
+        if (!analyser) return;
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyser.getByteTimeDomainData(dataArray);
