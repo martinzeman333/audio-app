@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Odstraněny proměnné pro restore-banner
+    // Získání prvků z HTML
     const recordStopButton = document.getElementById('recordStopButton');
     const processButton = document.getElementById('processButton');
     const micIcon = document.getElementById('mic-icon');
@@ -18,11 +18,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyContainer = document.getElementById('history-container');
     const historyList = document.getElementById('history-list');
 
+    // Globální proměnná pro ukládání historie
     let history = [];
+    
+    // Proměnné pro stav nahrávání
     let recordingState = 'inactive';
     let mediaRecorder, audioChunks = [], audioContext, analyser, source, animationFrameId;
 
-    // --- FUNKCE PRO PRÁCI S HISTORIÍ (bez save/load z localStorage pro poslední text) ---
+    // --- FUNKCE PRO PRÁCI S HISTORIÍ ---
     
     function saveHistory() {
         localStorage.setItem('audioHistory', JSON.stringify(history));
@@ -72,14 +75,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             li.appendChild(titleSpan);
-            li.appendChild(deleteBtn);
+li.appendChild(deleteBtn);
             historyList.appendChild(li);
         });
     }
 
     function addToHistory(newItem) {
         history.unshift(newItem);
-        if (history.length > 50) { history.pop(); }
+        if (history.length > 50) {
+            history.pop();
+        }
         saveHistory();
         renderHistory();
     }
@@ -90,10 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
     processButton.addEventListener('click', finishRecording);
     nativeShareButton.addEventListener('click', nativeShare);
     copyButton.addEventListener('click', copyTextToClipboard);
-    editedTextElem.addEventListener('input', updateEmailLink); // Odstraněno volání saveText()
+    editedTextElem.addEventListener('input', updateEmailLink);
     aiActionSelect.addEventListener('change', handleAiAction);
 
-    // Načteme pouze historii, ne poslední neuložený text
+    // Načteme historii při startu aplikace
     loadHistory();
 
     // --- ZBYTEK FUNKCÍ ---
