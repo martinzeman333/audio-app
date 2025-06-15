@@ -3,40 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Asistent Pro</title>
+    <title>Audio AI Assistant</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎙️ Audio Asistent Pro</h1>
-            <p>Moderní nástroj pro převod řeči na text a jeho následnou úpravu.</p>
+            <h1>Audio AI Assistant</h1>
+            <p>Váš osobní asistent pro převod hlasu na text.</p>
         </div>
-        
-        <div class="card recorder">
-            <h2>1. Nahrávání</h2>
-            <p>Stiskněte tlačítko pro spuštění/zastavení nahrávání.</p>
-            <div class="recorder-controls">
-                <button id="recordStopButton">
-                    <span class="icon-wrapper">
-                        <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                        <svg id="stop-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><circle cx="12" cy="12" r="10"/><rect width="6" height="6" x="9" y="9"/></svg>
-                    </span>
-                    <span id="button-text">Nahrát</span>
-                </button>
-                <div id="timer" class="timer">00:00</div>
-            </div>
+
+        <div class="recorder-visualizer">
+            <canvas id="audioVisualizer"></canvas>
+            <button id="recordStopButton">
+                <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            </button>
+            <p id="statusText">Stiskněte pro nahrávání</p>
         </div>
         
         <div id="loader" class="hidden">
             <div class="spinner"></div>
-            <p>Analyzuji nahrávku, chvilku strpení...</p>
+            <p>Finalizuji a vylepšuji text...</p>
         </div>
 
         <div id="results" class="hidden">
              <div class="card">
-                <h2>2. Výsledky</h2>
+                <h2>Výsledky</h2>
                 <h3>Původní přepis</h3>
                 <p id="originalText" class="transcription-box"></p>
                 <h3>Vylepšený text</h3>
@@ -44,7 +37,7 @@
             </div>
             
             <div class="card actions">
-                <h2>3. Další úpravy</h2>
+                <h2>Další úpravy</h2>
                 <button onclick="manipulateText('summarize')">Shrnout</button>
                 <button onclick="manipulateText('restyle', 'formálně')">Formálně</button>
                 <button onclick="manipulateText('expand')">Rozšířit</button>
