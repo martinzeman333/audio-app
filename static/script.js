@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Získání prvků z HTML až po načtení stránky
+    // Získání prvků z HTML
     const recordStopButton = document.getElementById('recordStopButton');
     const statusText = document.getElementById('statusText');
     const visualizer = document.getElementById('audioVisualizer');
@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyButton = document.getElementById('copyButton');
     const nativeShareButton = document.getElementById('nativeShareButton');
     const emailLink = document.getElementById('emailLink');
-    const loader = document.getElementById('loader');
     const resultsDiv = document.getElementById('results');
     const editedTextElem = document.getElementById('editedText');
     const aiActionSelect = document.getElementById('aiActionSelect');
@@ -21,25 +20,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let source;
     let animationFrameId;
 
-    // Skryjeme nativní sdílení, pokud není podporováno
     if (!navigator.share) {
         nativeShareButton.classList.add('hidden');
     }
 
-    // Připojení událostí k prvkům
+    // Připojení událostí
     recordStopButton.addEventListener('click', () => { if (isRecording) { stopRecording(); } else { startRecording(); } });
     nativeShareButton.addEventListener('click', nativeShare);
     copyButton.addEventListener('click', copyTextToClipboard);
     editedTextElem.addEventListener('input', updateEmailLink);
     aiActionSelect.addEventListener('change', handleAiAction);
 
-    // --- Definice funkcí ---
-
     function handleAiAction(event) {
         const selectedAction = event.target.value;
         if (selectedAction) {
             manipulateText(selectedAction);
-            event.target.selectedIndex = 0; // Resetuje menu zpět na výchozí text
+            event.target.selectedIndex = 0;
         }
     }
 
@@ -68,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function manipulateText(action, style = '') {
         const text = editedTextElem.value;
-        loader.classList.remove('hidden');
+        recordStopButton.disabled = true; // Deaktivujeme tlačítko i zde
         try {
             const response = await fetch('/manipulate-text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, action, style }) });
             const data = await response.json();
@@ -77,14 +73,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             alert('Došlo k chybě při úpravě textu.');
         } finally {
-            loader.classList.add('hidden');
+            recordStopButton.disabled = false; // Znovu aktivujeme tlačítko
         }
     }
 
     async function sendAudioToServer(audioBlob) {
         const formData = new FormData();
         formData.append('audio_file', audioBlob, 'recording.wav');
-        loader.classList.remove('hidden');
         resultsDiv.classList.add('hidden');
         recordStopButton.disabled = true;
         try {
@@ -99,14 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             alert(`Došlo k chybě při zpracování: ${error.message}`);
         } finally {
-            loader.classList.add('hidden');
             recordStopButton.disabled = false;
         }
     }
 
     async function startRecording() {
         try {
-            resultsDiv.classList.add('hidden'); // Skryjeme výsledky při novém nahrávání
+            resultsDiv.classList.add('hidden');
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             isRecording = true;
             updateButtonState(true); 
