@@ -15,27 +15,93 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsDiv = document.getElementById('results');
     const editedTextElem = document.getElementById('editedText');
     const aiActionSelect = document.getElementById('aiActionSelect');
+    const historyContainer = document.getElementById('history-container');
+    const historyList = document.getElementById('history-list');
 
-    // Proměnné pro stav a audio
-    let recordingState = 'inactive'; // 'inactive', 'recording', 'paused'
-    let mediaRecorder;
-    let audioChunks = [];
-    let audioContext;
-    let analyser;
-    let source;
-    let animationFrameId;
+    // Globální proměnná pro ukládání historie
+    let history = [];
+    
+    // Proměnné pro stav nahrávání
+    let recordingState = 'inactive';
+    let mediaRecorder, audioChunks = [], audioContext, analyser, source, animationFrameId;
 
-    // --- Event Listenery ---
+    // --- FUNKCE PRO PRÁCI S HISTORIÍ ---
+    
+    function saveHistory() {
+        localStorage.setItem('audioHistory', JSON.stringify(history));
+    }
+
+    function loadHistory() {
+        const savedHistory = localStorage.getItem('audioHistory');
+        if (savedHistory) {
+            history = JSON.parse(savedHistory);
+            renderHistory();
+        }
+    }
+
+    function renderHistory() {
+        historyList.innerHTML = '';
+        if (history.length > 0) {
+            historyContainer.classList.remove('hidden');
+        } else {
+            historyContainer.classList.add('hidden');
+        }
+
+        history.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'history-item';
+            li.dataset.id = item.id;
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'history-title';
+            titleSpan.textContent = item.title;
+            titleSpan.addEventListener('click', () => {
+                editedTextElem.value = item.text;
+                resultsDiv.classList.remove('hidden');
+                updateEmailLink();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-history-btn';
+            deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+            deleteBtn.ariaLabel = 'Smazat položku';
+            deleteBtn.addEventListener('click', () => {
+                if (confirm(`Opravdu chcete smazat záznam "${item.title}"?`)) {
+                    history = history.filter(h => h.id !== item.id);
+                    saveHistory();
+                    renderHistory();
+                }
+            });
+
+            li.appendChild(titleSpan);
+            li.appendChild(deleteBtn);
+            historyList.appendChild(li);
+        });
+    }
+
+    function addToHistory(newItem) {
+        history.unshift(newItem);
+        if (history.length > 50) {
+            history.pop();
+        }
+        saveHistory();
+        renderHistory();
+    }
+    
+    // --- PŘIPOJENÍ EVENT LISTENERŮ ---
     if (!navigator.share) { nativeShareButton.classList.add('hidden'); }
     recordStopButton.addEventListener('click', handleRecordClick);
-    processButton.addEventListener('click', finishRecording); // Zde voláme pouze stop()
+    processButton.addEventListener('click', finishRecording);
     nativeShareButton.addEventListener('click', nativeShare);
     copyButton.addEventListener('click', copyTextToClipboard);
     editedTextElem.addEventListener('input', updateEmailLink);
     aiActionSelect.addEventListener('change', handleAiAction);
-    
-    // --- Hlavní logika ovládání ---
 
+    // Načteme historii při startu aplikace
+    loadHistory();
+
+    // --- ZBYTEK FUNKCÍ ---
     function handleRecordClick() {
         if (recordingState === 'inactive') startRecording();
         else if (recordingState === 'recording') pauseRecording();
@@ -46,46 +112,29 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             resultsDiv.classList.add('hidden');
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
             recordingState = 'recording';
             updateButtonState(); 
             audioChunks = [];
             mediaRecorder = new MediaRecorder(stream);
-
-            // --- KLÍČOVÁ OPRAVA JE ZDE ---
-            // Event listenery se musí definovat PŘED spuštěním nahrávání.
-            // Logika pro odeslání je vrácena zpět do 'stop' listeneru.
-            mediaRecorder.addEventListener("dataavailable", event => {
-                audioChunks.push(event.data);
-            });
-
+            mediaRecorder.addEventListener("dataavailable", event => { audioChunks.push(event.data); });
             mediaRecorder.addEventListener("stop", () => {
-                // TENTO KÓD SE SPUSTÍ AŽ KDYŽ PROHLÍŽEČ VŠE DOKONČÍ
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 sendAudioToServer(audioBlob);
-
-                // Ukončíme stream a vizualizaci až zde
                 stream.getTracks().forEach(track => track.stop());
                 if (animationFrameId) cancelAnimationFrame(animationFrameId);
                 if (audioContext) audioContext.close();
                 clearCanvas();
             });
-            // ------------------------------------
-
             mediaRecorder.start();
-
-            // Spuštění vizualizace
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             source = audioContext.createMediaStreamSource(stream);
             analyser = audioContext.createAnalyser();
             analyser.fftSize = 2048; 
             source.connect(analyser);
             draw();
-            
         } catch (err) { 
             alert("Chyba: Nepodařilo se získat přístup k mikrofonu.");
-            console.error("getUserMedia error:", err); 
-            recordingState = 'inactive'; // Reset stavu při chybě
+            recordingState = 'inactive';
             updateButtonState();
         }
     }
@@ -107,16 +156,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function finishRecording() {
-        // Tato funkce teď už jen zavolá stop(). Zbytek se stane automaticky.
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
             recordingState = 'inactive';
             updateButtonState();
         }
     }
-    
+
     function updateButtonState() {
-        // ... (tato funkce zůstává stejná)
         if (recordingState === 'inactive') {
             recordStopButton.classList.remove('is-recording');
             micIcon.classList.remove('hidden');
@@ -154,6 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
             editedTextElem.value = data.edited_text; 
             resultsDiv.classList.remove('hidden');
             updateEmailLink();
+            addToHistory({ id: data.id, title: data.title, text: data.edited_text });
         } catch (error) {
             alert(`Došlo k chybě při zpracování: ${error.message}`);
         } finally {
@@ -163,8 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- Zbytek souboru (AI úpravy, sdílení, vizualizace) ---
-
     function handleAiAction(event) {
         const selectedAction = event.target.value;
         if (selectedAction) {
@@ -172,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
             event.target.selectedIndex = 0;
         }
     }
+
     async function manipulateText(action, style = '') {
         const text = editedTextElem.value;
         loaderText.textContent = 'Komunikuji s AI...';
@@ -187,26 +234,28 @@ document.addEventListener('DOMContentLoaded', () => {
             loader.classList.add('hidden');
         }
     }
+
     function updateEmailLink() {
         const text = editedTextElem.value;
         const subject = "Přepsaný text z Audio Asistenta";
         emailLink.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
     }
+
     function nativeShare() {
         if (navigator.share) {
-            navigator.share({
-                title: 'Přepsaný text',
-                text: editedTextElem.value,
-            }).catch((error) => console.log('Chyba při sdílení:', error));
+            navigator.share({ title: 'Přepsaný text', text: editedTextElem.value })
+            .catch((error) => console.log('Chyba při sdílení:', error));
         }
     }
+
     function copyTextToClipboard() {
         navigator.clipboard.writeText(editedTextElem.value).then(() => {
             const originalIcon = copyButton.innerHTML;
             copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
             setTimeout(() => { copyButton.innerHTML = originalIcon; }, 2000);
-        }, (err) => { alert('Chyba při kopírování textu: ', err); });
+        });
     }
+
     function draw() {
         animationFrameId = requestAnimationFrame(draw);
         if (!analyser) return;
@@ -231,5 +280,6 @@ document.addEventListener('DOMContentLoaded', () => {
         canvasCtx.lineTo(visualizer.width, visualizer.height / 2); 
         canvasCtx.stroke();
     }
+    
     function clearCanvas() { canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height); }
 });
