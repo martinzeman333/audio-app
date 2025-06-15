@@ -1,104 +1,186 @@
-:root {
-    --bg-dark: #0d0f21;
-    --bg-card: linear-gradient(145deg, #1e2242, #161a33);
-    --text-primary: #ffffff;
-    --text-secondary: #a0a8d3;
-    --border-color: rgba(67, 75, 127, 0.5);
-    
-    --accent-glow: #ff4aa1;
-    --accent-gradient: linear-gradient(90deg, #6e56ff, #ff4aa1);
-    
-    --font-family: 'Poppins', sans-serif;
-    --shadow: 0px 10px 30px rgba(0, 0, 0, 0.3);
-}
+document.addEventListener('DOMContentLoaded', () => {
+    // Získání prvků z HTML až po načtení stránky
+    const recordStopButton = document.getElementById('recordStopButton');
+    const statusText = document.getElementById('statusText');
+    const visualizer = document.getElementById('audioVisualizer');
+    const canvasCtx = visualizer.getContext('2d');
+    const copyButton = document.getElementById('copyButton');
+    const nativeShareButton = document.getElementById('nativeShareButton');
+    const emailLink = document.getElementById('emailLink');
+    const loader = document.getElementById('loader');
+    const resultsDiv = document.getElementById('results');
+    const editedTextElem = document.getElementById('editedText');
+    const aiActionSelect = document.getElementById('aiActionSelect');
 
-body {
-    font-family: var(--font-family);
-    background-color: var(--bg-dark);
-    background-image: radial-gradient(circle at top, rgba(76, 88, 163, 0.3) 0%, rgba(13, 15, 33, 0) 40%);
-    color: var(--text-primary);
-    margin: 0; padding: 30px 15px;
-    display: grid; place-items: center; min-height: 100vh;
-}
+    // Proměnné pro stav a audio
+    let isRecording = false;
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioContext;
+    let analyser;
+    let source;
+    let animationFrameId;
 
-.container { width: 100%; max-width: 600px; }
-.header { text-align: center; margin-bottom: 25px; }
-.header h1 { font-weight: 600; font-size: 2em; }
+    // Skryjeme nativní sdílení, pokud není podporováno
+    if (!navigator.share) {
+        nativeShareButton.classList.add('hidden');
+    }
 
-.recorder-visualizer {
-    display: flex; flex-direction: column; align-items: center;
-    gap: 20px; margin-bottom: 40px;
-}
-#audioVisualizer { width: 100%; height: 70px; }
-#recordStopButton {
-    width: 80px; height: 80px; border-radius: 50%; border: none;
-    background: var(--accent-gradient); color: white;
-    display: grid; place-items: center; cursor: pointer;
-    box-shadow: 0 0 20px var(--accent-glow), 0 0 30px var(--accent-glow) inset;
-    transition: all 0.3s ease;
-}
-#recordStopButton:hover:not(:disabled) { transform: scale(1.1); }
-#recordStopButton.is-recording { animation: pulse 1.5s infinite; }
-#recordStopButton:disabled { background: #5a618a; box-shadow: none; cursor: not-allowed; }
-#statusText { color: var(--text-secondary); font-size: 1em; transition: color 0.3s ease; }
-@keyframes pulse {
-    0% { box-shadow: 0 0 20px var(--accent-glow), 0 0 30px var(--accent-glow) inset; }
-    50% { box-shadow: 0 0 35px var(--accent-glow), 0 0 45px var(--accent-glow) inset; }
-    100% { box-shadow: 0 0 20px var(--accent-glow), 0 0 30px var(--accent-glow) inset; }
-}
+    // Připojení událostí k prvkům
+    recordStopButton.addEventListener('click', () => { if (isRecording) { stopRecording(); } else { startRecording(); } });
+    nativeShareButton.addEventListener('click', nativeShare);
+    copyButton.addEventListener('click', copyTextToClipboard);
+    editedTextElem.addEventListener('input', updateEmailLink);
+    aiActionSelect.addEventListener('change', handleAiAction);
 
-.card {
-    background: var(--bg-card);
-    border-radius: 20px; padding: 25px 30px; margin-bottom: 25px;
-    border: 1px solid var(--border-color); box-shadow: var(--shadow);
-}
-.card h2 { margin-top: 0; font-weight: 500; color: var(--text-primary); }
-textarea {
-    width: 100%; box-sizing: border-box;
-    padding: 12px; border-radius: 10px; font-size: 1em; margin-bottom: 20px;
-    background-color: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color);
-    color: var(--text-primary); font-family: var(--font-family);
-    transition: all 0.2s ease;
-}
-textarea:focus { outline: none; border-color: var(--accent-glow); box-shadow: 0 0 15px rgba(255, 74, 161, 0.3); }
+    // --- Definice funkcí ---
 
-.output-actions { display: flex; flex-direction: column; gap: 15px; }
-.action-row { display: flex; justify-content: center; align-items: center; gap: 20px; }
-.icon-button {
-    background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);
-    color: var(--text-secondary); border-radius: 50%;
-    width: 50px; height: 50px;
-    display: grid; place-items: center; cursor: pointer;
-    transition: all 0.2s ease; text-decoration: none;
-}
-.icon-button:hover {
-    color: white; border-color: var(--accent-glow);
-    background-color: rgba(255, 74, 161, 0.1); transform: translateY(-3px);
-}
-.custom-select {
-    appearance: none; -webkit-appearance: none; -moz-appearance: none;
-    width: 100%; padding: 12px 40px 12px 20px;
-    font-size: 1em; font-family: var(--font-family);
-    color: var(--text-primary); background-color: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--border-color); border-radius: 10px; cursor: pointer;
-    transition: all 0.2s ease;
-    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23a0a8d3%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E');
-    background-repeat: no-repeat;
-    background-position: right 15px center;
-    background-size: 20px;
-}
-.custom-select:hover, .custom-select:focus {
-    border-color: var(--accent-glow);
-}
-.custom-select:focus {
-    outline: none;
-    box-shadow: 0 0 15px rgba(255, 74, 161, 0.3);
-}
-.custom-select option {
-    background-color: var(--bg-dark);
-    color: var(--text-primary);
-}
+    function handleAiAction(event) {
+        const selectedAction = event.target.value;
+        if (selectedAction) {
+            manipulateText(selectedAction);
+            event.target.selectedIndex = 0; // Resetuje menu zpět na výchozí text
+        }
+    }
 
-.hidden { display: none; }
+    function updateEmailLink() {
+        const text = editedTextElem.value;
+        const subject = "Přepsaný text z Audio Asistenta";
+        emailLink.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+    }
 
-/* STYLY PRO LOADER A SPINNER BYLY KOMPLETNĚ ODSTRANĚNY */
+    function nativeShare() {
+        if (navigator.share) {
+            navigator.share({
+                title: 'Přepsaný text',
+                text: editedTextElem.value,
+            }).catch((error) => console.log('Chyba při sdílení:', error));
+        }
+    }
+
+    function copyTextToClipboard() {
+        navigator.clipboard.writeText(editedTextElem.value).then(() => {
+            const originalIcon = copyButton.innerHTML;
+            copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+            setTimeout(() => { copyButton.innerHTML = originalIcon; }, 2000);
+        }, (err) => { alert('Chyba při kopírování textu: ', err); });
+    }
+
+    async function manipulateText(action, style = '') {
+        const text = editedTextElem.value;
+        loader.classList.remove('hidden');
+        try {
+            const response = await fetch('/manipulate-text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, action, style }) });
+            const data = await response.json();
+            editedTextElem.value = data.text;
+            updateEmailLink();
+        } catch (error) {
+            alert('Došlo k chybě při úpravě textu.');
+        } finally {
+            loader.classList.add('hidden');
+        }
+    }
+
+    async function sendAudioToServer(audioBlob) {
+        const formData = new FormData();
+        formData.append('audio_file', audioBlob, 'recording.wav');
+        loader.classList.remove('hidden');
+        resultsDiv.classList.add('hidden');
+        recordStopButton.disabled = true;
+        try {
+            const response = await fetch('/process-audio', { method: 'POST', body: formData });
+            const data = await response.json();
+            if (data.error) { throw new Error(data.error); }
+            
+            editedTextElem.value = data.edited_text; 
+            
+            resultsDiv.classList.remove('hidden');
+            updateEmailLink();
+        } catch (error) {
+            alert(`Došlo k chybě při zpracování: ${error.message}`);
+        } finally {
+            loader.classList.add('hidden');
+            recordStopButton.disabled = false;
+        }
+    }
+
+    async function startRecording() {
+        try {
+            resultsDiv.classList.add('hidden'); // Skryjeme výsledky při novém nahrávání
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            isRecording = true;
+            updateButtonState(true); 
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.start();
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            source = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048; 
+            source.connect(analyser);
+            draw();
+            mediaRecorder.addEventListener("dataavailable", event => { audioChunks.push(event.data); });
+            mediaRecorder.addEventListener("stop", () => {
+                stream.getTracks().forEach(track => track.stop());
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                sendAudioToServer(audioBlob);
+            });
+        } catch (err) { 
+            alert("Chyba: Nepodařilo se získat přístup k mikrofonu. Zkontrolujte prosím oprávnění v nastavení prohlížeče.");
+            console.error("getUserMedia error:", err); 
+        }
+    }
+
+    function stopRecording() {
+        if (mediaRecorder) {
+            mediaRecorder.stop(); 
+            isRecording = false;
+            updateButtonState(false);
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+            clearCanvas();
+        }
+    }
+
+    function draw() {
+        animationFrameId = requestAnimationFrame(draw);
+        if (!analyser) return;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteTimeDomainData(dataArray);
+        canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height);
+        const gradient = canvasCtx.createLinearGradient(0, 0, visualizer.width, 0);
+        gradient.addColorStop(0, '#6e56ff'); 
+        gradient.addColorStop(1, '#ff4aa1');
+        canvasCtx.lineWidth = 2; 
+        canvasCtx.strokeStyle = gradient;
+        canvasCtx.beginPath();
+        const sliceWidth = visualizer.width * 1.0 / bufferLength;
+        let x = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            const v = dataArray[i] / 128.0; 
+            const y = v * visualizer.height / 2;
+            if (i === 0) { 
+                canvasCtx.moveTo(x, y); 
+            } else { 
+                canvasCtx.lineTo(x, y); 
+            }
+            x += sliceWidth;
+        }
+        canvasCtx.lineTo(visualizer.width, visualizer.height / 2); 
+        canvasCtx.stroke();
+    }
+
+    function clearCanvas() { 
+        canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height); 
+    }
+
+    function updateButtonState(recording) {
+        recordStopButton.classList.toggle('is-recording', recording);
+        statusText.textContent = recording ? 'Nahrávám...' : 'Stiskněte pro nahrávání';
+    }
+});
