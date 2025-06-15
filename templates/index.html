@@ -8,9 +8,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div id="loader" class="hidden">
-        <div class="spinner"></div>
-        <p id="loader-text">Zpracovávám...</p>
+    <div id="restore-banner" class="hidden">
+        <p>Byla nalezena neuložená práce. Chcete ji obnovit?</p>
+        <div>
+            <button id="restore-yes">Ano, obnovit</button>
+            <button id="restore-no">Ne, smazat</button>
+        </div>
     </div>
 
     <div class="container">
@@ -20,12 +23,24 @@
 
         <div class="recorder-visualizer">
             <canvas id="audioVisualizer"></canvas>
-            <button id="recordStopButton" aria-label="Spustit nahrávání">
-                <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-            </button>
+            <div class="recorder-buttons-wrapper">
+                <button id="recordStopButton" aria-label="Spustit nahrávání">
+                    <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                    <svg id="pause-icon" class="hidden" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                </button>
+                <button id="processButton" class="process-button hidden" title="Zastavit a zpracovat">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="m16 6-4 4-4-4"/><path d="M12 16a6 6 0 1 0 0-12 6 6 0 0 0 0 12z"/></svg>
+                    <span>Zpracovat</span>
+                </button>
+            </div>
             <p id="statusText">Stiskněte pro nahrávání</p>
         </div>
         
+        <div id="loader" class="hidden">
+            <div class="spinner"></div>
+            <p id="loader-text">Zpracovávám...</p>
+        </div>
+
         <div id="results" class="hidden">
              <div class="card">
                 <h2>Přepsaný text</h2>
