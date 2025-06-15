@@ -21,45 +21,9 @@ body {
     display: grid; place-items: center; min-height: 100vh;
 }
 
-#restore-banner {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background-color: var(--bg-card);
-    border-bottom: 1px solid var(--border-color);
-    padding: 15px;
-    z-index: 2000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-    box-shadow: var(--shadow);
-}
-#restore-banner p {
-    margin: 0;
-    color: var(--text-secondary);
-}
-#restore-banner button {
-    padding: 8px 16px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background-color: transparent;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-#restore-banner button:hover {
-    border-color: var(--accent-glow);
-    color: var(--accent-glow);
-}
-#restore-banner button#restore-yes {
-    background-color: var(--accent-glow);
-    border-color: var(--accent-glow);
-    color: white;
-}
+/* Styly pro banner byly kompletně odstraněny */
 
-.container { width: 100%; max-width: 600px; padding-top: 60px; }
+.container { width: 100%; max-width: 600px; /* Odstraněn padding-top */}
 .header { text-align: center; margin-bottom: 25px; }
 .header h1 { font-weight: 600; font-size: 2em; }
 
