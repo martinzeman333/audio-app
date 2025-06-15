@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Získání prvků z HTML
+    // Odstraněny proměnné pro restore-banner
     const recordStopButton = document.getElementById('recordStopButton');
     const processButton = document.getElementById('processButton');
     const micIcon = document.getElementById('mic-icon');
@@ -18,14 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyContainer = document.getElementById('history-container');
     const historyList = document.getElementById('history-list');
 
-    // Globální proměnná pro ukládání historie
     let history = [];
-    
-    // Proměnné pro stav nahrávání
     let recordingState = 'inactive';
     let mediaRecorder, audioChunks = [], audioContext, analyser, source, animationFrameId;
 
-    // --- FUNKCE PRO PRÁCI S HISTORIÍ ---
+    // --- FUNKCE PRO PRÁCI S HISTORIÍ (bez save/load z localStorage pro poslední text) ---
     
     function saveHistory() {
         localStorage.setItem('audioHistory', JSON.stringify(history));
@@ -82,9 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addToHistory(newItem) {
         history.unshift(newItem);
-        if (history.length > 50) {
-            history.pop();
-        }
+        if (history.length > 50) { history.pop(); }
         saveHistory();
         renderHistory();
     }
@@ -95,10 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
     processButton.addEventListener('click', finishRecording);
     nativeShareButton.addEventListener('click', nativeShare);
     copyButton.addEventListener('click', copyTextToClipboard);
-    editedTextElem.addEventListener('input', updateEmailLink);
+    editedTextElem.addEventListener('input', updateEmailLink); // Odstraněno volání saveText()
     aiActionSelect.addEventListener('change', handleAiAction);
 
-    // Načteme historii při startu aplikace
+    // Načteme pouze historii, ne poslední neuložený text
     loadHistory();
 
     // --- ZBYTEK FUNKCÍ ---
