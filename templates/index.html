@@ -43,18 +43,18 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                         </button>
                     </div>
-                    <div class="action-divider">AI Úpravy Textu</div>
-                    <div class="action-row">
-                        <button class="icon-button" onclick="manipulateText('summarize')" title="Shrnout text" aria-label="Shrnout text">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></svg>
-                        </button>
-                        <button class="icon-button" onclick="manipulateText('restyle', 'profesionálně')" title="Vylepšit styl" aria-label="Vylepšit styl">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9a2 2 0 0 1 3 3a2 2 0 0 1-3 3a6 6 0 0 0-9-9"/><path d="M12 3a6 6 0 0 0-9 9a2 2 0 0 0-3 3a2 2 0 0 0 3 3a6 6 0 0 0 9-9"/></svg>
-                        </button>
-                        <button class="icon-button" onclick="manipulateText('expand')" title="Rozšířit text" aria-label="Rozšířit text">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 3-3 3 3"/><path d="m3 15 3 3 3-3"/><path d="M6 6v12"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
-                        </button>
-                    </div>
+                </div>
+            </div>
+
+            <div class="card actions">
+                <h2>AI Úpravy Textu</h2>
+                <div class="action-row">
+                    <select id="aiActionSelect" class="custom-select">
+                        <option value="" disabled selected>Vyberte AI úpravu...</option>
+                        <option value="summarize">Shrnout text</option>
+                        <option value="restyle">Vylepšit styl</option>
+                        <option value="expand">Rozšířit myšlenky</option>
+                    </select>
                 </div>
             </div>
         </div>
