@@ -17,6 +17,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
+
 def transcribe_audio_azure(audio_filename):
     logging.info(f"Spouštím přepis souboru: {audio_filename}")
     speech_config = speechsdk.SpeechConfig(
@@ -38,6 +39,7 @@ def transcribe_audio_azure(audio_filename):
         cancellation_details = result.cancellation_details
         logging.error(f"Azure chyba: {cancellation_details.reason} - {cancellation_details.error_details}")
         raise Exception(f"Azure chyba: {cancellation_details.reason}")
+
 
 def convert_audio_with_ffmpeg(input_path, output_path):
     try:
@@ -76,7 +78,6 @@ def process_audio():
     audio_file.save(original_filepath)
 
     try:
-        # --- NOVÁ OCHRANA PROTI PRÁZDNÝM/MALÝM SOUBORŮM ---
         if os.path.getsize(original_filepath) < 4096: # Menší než 4KB
             logging.warning("Nahraný soubor je příliš malý, pravděpodobně neplatný.")
             return jsonify({"error": "Nahrávka byla příliš krátká nebo prázdná. Zkuste to prosím znovu."}), 400
@@ -87,7 +88,9 @@ def process_audio():
         if not original_text or original_text == "Řeč nebyla rozpoznána.":
             return jsonify({"edited_text": "Nepodařilo se rozpoznat žádnou řeč. Zkuste to prosím znovu."})
 
-        cleanup_prompt = f"Oprav interpunkci, gramatiku a odstraň slovní vatu (jako 'ehm', 'hmm', 'jako') z následujícího textu, ale zachovej jeho význam a původní formulaci vět: '{original_text}'"
+        # --- ZMĚNA ZDE: Vylepšený a přesnější prompt ---
+        cleanup_prompt = f"Proveď pouze základní korekturu následujícího textu. Odstraň slovní vatu (jako 'ehm', 'hmm') a doplň chybějící interpunkci (čárky, tečky). Zachovej původní slova a formulaci vět. Výsledný text neobaluj do vnějších uvozovek. Text k úpravě: '{original_text}'"
+        
         edited_text = call_gpt(cleanup_prompt, temperature=0.2)
         
         return jsonify({"edited_text": edited_text})
