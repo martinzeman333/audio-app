@@ -17,35 +17,20 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
-# ====================================================================
-# JEDNODUCHÉ A KONEČNÉ ŘEŠENÍ PRO PŘEPIS
-# ====================================================================
+
 def transcribe_audio_azure(audio_filename):
-    """
-    Přepíše celý audio soubor pomocí jednoduché metody, ale s upraveným
-    časovým limitem pro detekci ticha.
-    """
     logging.info(f"Spouštím přepis souboru: {audio_filename}")
     speech_config = speechsdk.SpeechConfig(
         subscription=os.getenv("AZURE_SPEECH_KEY"), 
         region=os.getenv("AZURE_SPEECH_REGION")
     )
     speech_config.speech_recognition_language = "cs-CZ"
-
-    # --- KLÍČOVÁ ZMĚNA ZDE ---
-    # Nastavíme, aby Azure čekal až 5 sekund ticha, než ukončí rozpoznávání.
-    # To nám umožní nahrávat více vět s přirozenými pauzami.
-    # Hodnota je v milisekundách, takže 5000ms = 5s.
     speech_config.set_property(speechsdk.PropertyId.Speech_SegmentationSilenceTimeoutMs, "5000")
     
     audio_config = speechsdk.audio.AudioConfig(filename=audio_filename)
-    
-    # Používáme opět jednoduchý a spolehlivý 'recognize_once_async'
     speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
-    
     result = speech_recognizer.recognize_once_async().get()
     
-    # Zpracování výsledku zůstává jednoduché
     if result.reason == speechsdk.ResultReason.RecognizedSpeech:
         logging.info("Azure: Řeč úspěšně rozpoznána.")
         return result.text
@@ -59,9 +44,6 @@ def transcribe_audio_azure(audio_filename):
             logging.error(f"Azure: Detail chyby: {cancellation_details.error_details}")
         raise Exception(f"Azure chyba: {cancellation_details.reason}")
 
-# ====================================================================
-# Zbytek souboru je stejný jako v minulé funkční verzi
-# ====================================================================
 
 def convert_audio_with_ffmpeg(input_path, output_path):
     logging.info(f"Spouštím konverzi souboru '{input_path}' na '{output_path}' pomocí ffmpeg.")
@@ -73,9 +55,24 @@ def convert_audio_with_ffmpeg(input_path, output_path):
         logging.error(f"FFmpeg selhal s chybou: {e.stderr}")
         raise RuntimeError(f"Chyba při konverzi audia: {e.stderr}")
 
-def call_gpt(prompt):
+# ====================================================================
+# ZMĚNA ZDE: Funkce nyní přijímá 'temperature' jako argument
+# ====================================================================
+def call_gpt(prompt, temperature=0.5):
+    """
+    Volá OpenAI API s možností nastavit 'teplotu' (kreativitu).
+    Výchozí hodnota je 0.5 pro kreativní úkoly.
+    """
     try:
-        response = openai.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "system", "content": "Jsi expert na stylistiku a gramatiku českého jazyka. Tvé odpovědi jsou stručné a přímo k věci."}, {"role": "user", "content": prompt}], temperature=0.5)
+        logging.info(f"Volám OpenAI s teplotou: {temperature}")
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Jsi expert na stylistiku a gramatiku českého jazyka. Tvé odpovědi jsou stručné a přímo k věci."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=temperature  # Použije se předaná hodnota
+        )
         return response.choices[0].message.content
     except Exception as e:
         logging.error(f"Výjimka v call_gpt: {e}")
@@ -102,9 +99,14 @@ def process_audio():
         if not original_text or original_text == "Řeč nebyla rozpoznána.":
             return jsonify({"edited_text": "Nepodařilo se rozpoznat žádnou řeč. Zkuste to prosím znovu."})
 
-        cleanup_prompt = f"Oprav interpunkci, gramatiku a odstraň slovní vatu (jako 'ehm', 'hmm', 'jako') z následujícího textu, ale zachovej jeho význam: '{original_text}'"
-        edited_text = call_gpt(cleanup_prompt)
+        cleanup_prompt = f"Oprav interpunkci, gramatiku a odstraň slovní vatu (jako 'ehm', 'hmm', 'jako') z následujícího textu, ale zachovej jeho význam a původní formulaci vět: '{original_text}'"
         
+        # ====================================================================
+        # ZMĚNA ZDE: Pro prvotní čištění voláme funkci s nízkou teplotou 0.2
+        # ====================================================================
+        edited_text = call_gpt(cleanup_prompt, temperature=0.2)
+        
+        # Vrátíme pouze 'edited_text', protože 'original_text' už na frontendu nezobrazujeme
         return jsonify({"edited_text": edited_text})
 
     except Exception as e:
@@ -121,6 +123,8 @@ def manipulate_text():
     prompts = {"summarize": f"Vytvoř stručné shrnutí tohoto textu: '{text}'", "restyle": f"Přepiš tento text do {style} stylu: '{text}'", "expand": f"Rozšiř následující myšlenky a přidej relevantní detaily: '{text}'"}
     prompt = prompts.get(action)
     if not prompt: return jsonify({"error": "Neznámá akce"}), 400
+    
+    # Pro kreativní úpravy necháme výchozí, vyšší teplotu (0.5)
     return jsonify({"text": call_gpt(prompt)})
 
 if __name__ == '__main__':
