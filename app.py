@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import logging
 import subprocess
 import shutil
+import threading # <-- PŘIDÁN NOVÝ IMPORT
 
 logging.basicConfig(level=logging.INFO)
 
@@ -15,30 +16,25 @@ if not shutil.which("ffmpeg"):
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# ====================================================================
-# TENTO ŘÁDEK S NEJVĚTŠÍ PRAVDĚPODOBNOSTÍ CHYBĚL NEBO BYL SMAZÁN
 app = Flask(__name__)
+
+
 # ====================================================================
-
-
-def convert_audio_with_ffmpeg(input_path, output_path):
-    logging.info(f"Spouštím konverzi souboru '{input_path}' na '{output_path}' pomocí ffmpeg.")
-    try:
-        command = ["ffmpeg", "-i", input_path, "-acodec", "pcm_s16le", "-ac", "1", "-ar", "16000", "-y", output_path]
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
-        logging.info("FFmpeg konverze úspěšná.")
-    except subprocess.CalledProcessError as e:
-        logging.error(f"FFmpeg selhal s chybou: {e.stderr}")
-        raise RuntimeError(f"Chyba při konverzi audia: {e.stderr}")
-    except FileNotFoundError:
-        logging.error("Chyba: Příkaz 'ffmpeg' nebyl nalezen.")
-        raise RuntimeError("Nástroj ffmpeg není dostupný na serveru.")
-
+# ZDE JE KLÍČOVÁ OPRAVA
+# ====================================================================
 def transcribe_audio_azure(audio_filename):
+    """
+    Přepíše CELÝ audio soubor pomocí Azure Speech SDK v kontinuálním režimu.
+    Tato verze používá threading.Event pro spolehlivé čekání na výsledek.
+    """
     logging.info(f"Spouštím kontinuální přepis souboru: {audio_filename}")
-    speech_config = speechsdk.SpeechConfig(subscription=os.getenv("AZURE_SPEECH_KEY"), region=os.getenv("AZURE_SPEECH_REGION"))
+    speech_config = speechsdk.SpeechConfig(
+        subscription=os.getenv("AZURE_SPEECH_KEY"), 
+        region=os.getenv("AZURE_SPEECH_REGION")
+    )
     speech_config.speech_recognition_language = "cs-CZ"
     audio_config = speechsdk.audio.AudioConfig(filename=audio_filename)
+    
     speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
     
     all_results = []
@@ -46,25 +42,45 @@ def transcribe_audio_azure(audio_filename):
         all_results.append(evt.result.text)
         logging.info(f'ROZPOZNÁNO: {evt.result.text}')
 
-    speech_recognizer.recognized.connect(handle_recognized)
+    # Použijeme threading.Event pro signalizaci dokončení. Je to bezpečné a efektivní.
+    done = threading.Event()
 
-    done = False
     def stop_cb(evt):
+        """Callback, který se zavolá po ukončení session a nastaví událost 'done'."""
         logging.info('KONEC SEZENÍ: {}'.format(evt))
-        nonlocal done
-        done = True
+        done.set() # Signalizuje, že můžeme přestat čekat
 
+    speech_recognizer.recognized.connect(handle_recognized)
     speech_recognizer.session_stopped.connect(stop_cb)
     speech_recognizer.canceled.connect(stop_cb)
+
     speech_recognizer.start_continuous_recognition()
     
-    while not done:
-        pass
+    # Místo nebezpečné smyčky 'while not done: pass' použijeme toto:
+    # done.wait() - efektivně zablokuje vlákno, dokud není událost nastavena.
+    # Přidáváme i timeout pro jistotu, např. 5 minut (300 sekund)
+    done.wait(timeout=300.0) 
 
     speech_recognizer.stop_continuous_recognition()
+    
     final_text = " ".join(all_results)
     logging.info(f"Finální přepsaný text: {final_text}")
+    
     return final_text
+# ====================================================================
+# KONEC OPRAVY
+# ====================================================================
+
+
+def convert_audio_with_ffmpeg(input_path, output_path):
+    logging.info(f"Spouštím konverzi souboru '{input_path}' na '{output_path}' pomocí ffmpeg.")
+    try:
+        command = ["ffmpeg", "-i", input_path, "-acodec", "pcm_s16le", "-ac", "1", "-ar", "16000", "-y", output_path]
+        subprocess.run(command, check=True, capture_output=True, text=True)
+        logging.info("FFmpeg konverze úspěšná.")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"FFmpeg selhal s chybou: {e.stderr}")
+        raise RuntimeError(f"Chyba při konverzi audia: {e.stderr}")
 
 def call_gpt(prompt):
     try:
@@ -104,10 +120,8 @@ def process_audio():
         logging.error(f"Došlo k chybě při zpracování audia: {e}")
         return jsonify({"error": f"Nastala chyba na serveru: {e}"}), 500
     finally:
-        if os.path.exists(original_filepath):
-            os.remove(original_filepath)
-        if os.path.exists(converted_filepath):
-            os.remove(converted_filepath)
+        if os.path.exists(original_filepath): os.remove(original_filepath)
+        if os.path.exists(converted_filepath): os.remove(converted_filepath)
 
 @app.route('/manipulate-text', methods=['POST'])
 def manipulate_text():
@@ -118,11 +132,5 @@ def manipulate_text():
     if not prompt: return jsonify({"error": "Neznámá akce"}), 400
     return jsonify({"text": call_gpt(prompt)})
 
-
-# ====================================================================
-# TENTO BLOK JE TAKÉ DŮLEŽITÝ PRO SPRÁVNOU FUNKCI
 if __name__ == '__main__':
-    # Tato část se používá pro lokální testování, Gunicorn ji ignoruje,
-    # ale je dobrým zvykem ji v souboru mít.
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-# ====================================================================
