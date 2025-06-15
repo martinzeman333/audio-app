@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Asistent Pro</title>
-    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -18,9 +16,17 @@
         
         <div class="card recorder">
             <h2>1. Nahrávání</h2>
-            <p>Stiskněte tlačítko a začněte mluvit.</p>
-            <button id="recordButton">Spustit nahrávání</button>
-            <button id="stopButton" disabled>Zastavit a zpracovat</button>
+            <p>Stiskněte tlačítko pro spuštění/zastavení nahrávání.</p>
+            <div class="recorder-controls">
+                <button id="recordStopButton">
+                    <span class="icon-wrapper">
+                        <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                        <svg id="stop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px" class="hidden"><path d="M6 6h12v12H6z"/></svg>
+                    </span>
+                    <span id="button-text">Nahrát</span>
+                </button>
+                <div id="timer" class="timer">00:00</div>
+            </div>
         </div>
         
         <div id="loader" class="hidden">
@@ -29,7 +35,7 @@
         </div>
 
         <div id="results" class="hidden">
-            <div class="card">
+             <div class="card">
                 <h2>2. Výsledky</h2>
                 <h3>Původní přepis (Azure)</h3>
                 <p id="originalText" class="transcription-box"></p>
