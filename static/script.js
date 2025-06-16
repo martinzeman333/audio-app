@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Získání prvků z HTML
+    const timerElement = document.getElementById('timer');
     const recordStopButton = document.getElementById('recordStopButton');
     const processButton = document.getElementById('processButton');
     const micIcon = document.getElementById('mic-icon');
@@ -18,19 +19,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyContainer = document.getElementById('history-container');
     const historyList = document.getElementById('history-list');
 
-    // Globální proměnná pro ukládání historie
     let history = [];
-    
-    // Proměnné pro stav nahrávání
     let recordingState = 'inactive';
     let mediaRecorder, audioChunks = [], audioContext, analyser, source, animationFrameId;
-
-    // --- FUNKCE PRO PRÁCI S HISTORIÍ ---
     
-    function saveHistory() {
-        localStorage.setItem('audioHistory', JSON.stringify(history));
+    // --- NOVÉ PROMĚNNÉ PRO ČASOVAČ ---
+    let timerInterval;
+    let seconds = 0;
+
+    // --- FUNKCE PRO ČASOVAČ ---
+    function updateTimer() {
+        seconds++;
+        const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const secs = (seconds % 60).toString().padStart(2, '0');
+        timerElement.textContent = `${minutes}:${secs}`;
     }
 
+    function startTimer() {
+        seconds = 0;
+        timerElement.textContent = '00:00';
+        timerElement.classList.remove('hidden');
+        clearInterval(timerInterval); // Pro jistotu vyčistíme starý interval
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        timerElement.classList.add('hidden');
+    }
+
+    // --- OSTATNÍ FUNKCE ---
+    
+    function saveHistory() { localStorage.setItem('audioHistory', JSON.stringify(history)); }
     function loadHistory() {
         const savedHistory = localStorage.getItem('audioHistory');
         if (savedHistory) {
@@ -38,32 +58,20 @@ document.addEventListener('DOMContentLoaded', () => {
             renderHistory();
         }
     }
-
     function renderHistory() {
         historyList.innerHTML = '';
-        if (history.length > 0) {
-            historyContainer.classList.remove('hidden');
-        } else {
-            historyContainer.classList.add('hidden');
-        }
-
+        if (history.length > 0) { historyContainer.classList.remove('hidden'); }
+        else { historyContainer.classList.add('hidden'); }
         history.forEach(item => {
-            const li = document.createElement('li');
-            li.className = 'history-item';
-            li.dataset.id = item.id;
-
-            const titleSpan = document.createElement('span');
-            titleSpan.className = 'history-title';
-            titleSpan.textContent = item.title;
+            const li = document.createElement('li'); li.className = 'history-item'; li.dataset.id = item.id;
+            const titleSpan = document.createElement('span'); titleSpan.className = 'history-title'; titleSpan.textContent = item.title;
             titleSpan.addEventListener('click', () => {
                 editedTextElem.value = item.text;
                 resultsDiv.classList.remove('hidden');
                 updateEmailLink();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-history-btn';
+            const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-history-btn';
             deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
             deleteBtn.ariaLabel = 'Smazat položku';
             deleteBtn.addEventListener('click', () => {
@@ -73,23 +81,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderHistory();
                 }
             });
-
-            li.appendChild(titleSpan);
-            li.appendChild(deleteBtn);
+            li.appendChild(titleSpan); li.appendChild(deleteBtn);
             historyList.appendChild(li);
         });
     }
-
     function addToHistory(newItem) {
         history.unshift(newItem);
-        if (history.length > 50) {
-            history.pop();
-        }
+        if (history.length > 50) { history.pop(); }
         saveHistory();
         renderHistory();
     }
     
-    // --- PŘIPOJENÍ EVENT LISTENERŮ ---
     if (!navigator.share) { nativeShareButton.classList.add('hidden'); }
     recordStopButton.addEventListener('click', handleRecordClick);
     processButton.addEventListener('click', finishRecording);
@@ -112,30 +114,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             recordingState = 'recording';
             updateButtonState(); 
+            startTimer(); // Spustíme časovač
             audioChunks = [];
             mediaRecorder = new MediaRecorder(stream);
-            
-            mediaRecorder.addEventListener("dataavailable", event => { 
-                audioChunks.push(event.data); 
-            });
-
+            mediaRecorder.addEventListener("dataavailable", event => { audioChunks.push(event.data); });
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                
-                if (audioBlob.size < 4096) { // Zvýšena kontrola pro jistotu
-                    alert("Nahrávka byla příliš krátká nebo prázdná. Zkuste to prosím znovu.");
+                if (audioBlob.size < 4096) {
+                    alert("Nahrávka byla příliš krátká.");
                     recordingState = 'inactive';
                     updateButtonState();
                     return;
                 }
-
                 uploadAndProcessAudio(audioBlob);
                 stream.getTracks().forEach(track => track.stop());
                 if (animationFrameId) cancelAnimationFrame(animationFrameId);
                 if (audioContext) audioContext.close();
                 clearCanvas();
             });
-
             mediaRecorder.start();
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             source = audioContext.createMediaStreamSource(stream);
@@ -154,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.pause();
             recordingState = 'paused';
+            clearInterval(timerInterval); // Zastavíme interval při pauze
             updateButtonState();
         }
     }
@@ -162,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mediaRecorder && mediaRecorder.state === 'paused') {
             mediaRecorder.resume();
             recordingState = 'recording';
+            timerInterval = setInterval(updateTimer, 1000); // Znovu spustíme interval
             updateButtonState();
         }
     }
@@ -170,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
             recordingState = 'inactive';
+            stopTimer(); // Zastavíme a skryjeme časovač
             updateButtonState();
         }
     }
@@ -179,13 +178,15 @@ document.addEventListener('DOMContentLoaded', () => {
             recordStopButton.classList.remove('is-recording'); micIcon.classList.remove('hidden'); pauseIcon.classList.add('hidden');
             statusText.textContent = 'Stiskněte pro nahrávání';
             processButton.classList.add('hidden');
+            timerElement.classList.add('hidden'); // Skryjeme časovač
         } else if (recordingState === 'recording') {
             recordStopButton.classList.add('is-recording'); micIcon.classList.add('hidden'); pauseIcon.classList.remove('hidden');
-            statusText.textContent = 'Nahrávám... (klikněte pro pauzu)';
+            statusText.textContent = 'Nahrávám...';
             processButton.classList.remove('hidden');
+            timerElement.classList.remove('hidden'); // Zobrazíme časovač
         } else if (recordingState === 'paused') {
             recordStopButton.classList.remove('is-recording'); micIcon.classList.remove('hidden'); pauseIcon.classList.add('hidden');
-            statusText.textContent = 'Pozastaveno (klikněte pro pokračování)';
+            statusText.textContent = 'Pozastaveno';
             processButton.classList.remove('hidden');
         }
     }
@@ -195,43 +196,25 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsDiv.classList.add('hidden');
         recordStopButton.disabled = true;
         processButton.disabled = true;
-
         try {
             const formData = new FormData();
             formData.append('audio_file', audioBlob, 'recording.wav');
-
-            if (retries < 3) {
-                 loaderText.textContent = `Server se probouzí, zkouším znovu...`;
-            } else {
-                loaderText.textContent = 'Nahrávám soubor na server...';
-            }
-            
+            if (retries < 3) { loaderText.textContent = `Server se probouzí...`; } 
+            else { loaderText.textContent = 'Nahrávám soubor na server...'; }
             const uploadResponse = await fetch('/upload-audio', { method: 'POST', body: formData });
-            
             if (!uploadResponse.ok) {
                 let errorMessage = `Chyba při nahrávání: ${uploadResponse.status} ${uploadResponse.statusText}`;
-                try {
-                    const errData = await uploadResponse.json();
-                    errorMessage = errData.error || errorMessage;
-                } catch (e) {
-                    console.error("Chybová odpověď serveru nebyla ve formátu JSON.", e);
-                }
+                try { const errData = await uploadResponse.json(); errorMessage = errData.error || errorMessage; } catch (e) {}
                 throw new Error(errorMessage);
             }
-
             const { job_id } = await uploadResponse.json();
             pollStatus(job_id);
-
         } catch (error) {
             if (error instanceof TypeError && retries > 0) {
-                console.warn(`Síťová chyba, pravděpodobně se server probouzí. Zkouším znovu za ${delay / 1000}s...`);
                 setTimeout(() => uploadAndProcessAudio(audioBlob, retries - 1, delay), delay);
             } else {
-                console.error("Kompletní chyba při nahrávání:", error);
                 let userMessage = `Došlo k chybě: ${error.message}`;
-                if (error instanceof TypeError) {
-                    userMessage = 'Chyba sítě: Nelze se připojit k serveru. Zkuste to prosím znovu.';
-                }
+                if (error instanceof TypeError) { userMessage = 'Chyba sítě: Nelze se připojit k serveru.'; }
                 alert(userMessage);
                 loader.classList.add('hidden');
                 recordStopButton.disabled = false;
@@ -246,14 +229,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const statusResponse = await fetch(`/status/${jobId}`);
                 if (!statusResponse.ok) {
                     clearInterval(intervalId);
-                    throw new Error(`Chyba při zjišťování stavu: ${statusResponse.status} ${statusResponse.statusText}`);
+                    throw new Error(`Chyba při zjišťování stavu: ${statusResponse.status}`);
                 }
                 const job = await statusResponse.json();
-
-                if (job.message) {
-                    loaderText.textContent = job.message;
-                }
-
+                if (job.message) { loaderText.textContent = job.message; }
                 if (job.status === 'completed') {
                     clearInterval(intervalId);
                     const data = job.result;
@@ -266,12 +245,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     processButton.disabled = false;
                 } else if (job.status === 'failed') {
                     clearInterval(intervalId);
-                    throw new Error(job.error || 'Neznámá chyba při zpracování na serveru.');
+                    throw new Error(job.error || 'Neznámá chyba na serveru.');
                 }
             } catch (error) {
-                console.error("Kompletní chyba při dotazování na stav:", error);
                 clearInterval(intervalId);
-                alert(`Došlo k chybě při zpracování: ${error.message}`);
+                alert(`Chyba při zpracování: ${error.message}`);
                 loader.classList.add('hidden');
                 recordStopButton.disabled = false;
                 processButton.disabled = false;
@@ -293,9 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loader.classList.remove('hidden');
         try {
             const response = await fetch('/manipulate-text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, action, style }) });
-            if (!response.ok) {
-                 throw new Error(`Chyba serveru při AI úpravě: ${response.status} ${response.statusText}`);
-            }
+            if (!response.ok) { throw new Error(`Chyba serveru při AI úpravě: ${response.status}`); }
             const data = await response.json();
             editedTextElem.value = data.text;
             updateEmailLink();
