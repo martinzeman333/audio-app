@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    async function uploadAndProcessAudio(audioBlob) {
+    async function uploadAndProcessAudio(audioBlob, retries = 3, delay = 5000) {
         loader.classList.remove('hidden');
         resultsDiv.classList.add('hidden');
         recordStopButton.disabled = true;
@@ -210,7 +210,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const formData = new FormData();
             formData.append('audio_file', audioBlob, 'recording.wav');
 
-            loaderText.textContent = 'Nahrávám soubor na server...';
+            if (retries < 3) {
+                 loaderText.textContent = `Server se probouzí, zkouším znovu... (${3 - retries + 1})`;
+            } else {
+                loaderText.textContent = 'Nahrávám soubor na server...';
+            }
+            
             const uploadResponse = await fetch('/upload-audio', { method: 'POST', body: formData });
             
             if (!uploadResponse.ok) {
@@ -228,16 +233,20 @@ document.addEventListener('DOMContentLoaded', () => {
             pollStatus(job_id);
 
         } catch (error) {
-            console.error("Kompletní chyba při nahrávání:", error);
-            // VYLEPŠENÁ CHYBOVÁ HLÁŠKA
-            let userMessage = `Došlo k chybě: ${error.message}`;
-            if (error instanceof TypeError) {
-                userMessage = 'Chyba sítě: Nelze se připojit k serveru. Zkontrolujte připojení k internetu.';
+            if (error instanceof TypeError && retries > 0) {
+                console.warn(`Síťová chyba, pravděpodobně se server probouzí. Zkouším znovu za ${delay / 1000}s... (${retries} pokusů zbývá)`);
+                setTimeout(() => uploadAndProcessAudio(audioBlob, retries - 1, delay), delay);
+            } else {
+                console.error("Kompletní chyba při nahrávání:", error);
+                let userMessage = `Došlo k chybě: ${error.message}`;
+                if (error instanceof TypeError) {
+                    userMessage = 'Chyba sítě: Nelze se připojit k serveru. Zkontrolujte připojení k internetu a zkuste to znovu.';
+                }
+                alert(userMessage);
+                loader.classList.add('hidden');
+                recordStopButton.disabled = false;
+                processButton.disabled = false;
             }
-            alert(userMessage);
-            loader.classList.add('hidden');
-            recordStopButton.disabled = false;
-            processButton.disabled = false;
         }
     }
 
