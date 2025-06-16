@@ -98,10 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
     editedTextElem.addEventListener('input', updateEmailLink);
     aiActionSelect.addEventListener('change', handleAiAction);
 
-    // Načteme historii při startu aplikace
     loadHistory();
 
-    // --- ZBYTEK FUNKCÍ ---
     function handleRecordClick() {
         if (recordingState === 'inactive') startRecording();
         else if (recordingState === 'recording') pauseRecording();
@@ -124,13 +122,11 @@ document.addEventListener('DOMContentLoaded', () => {
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 
-                // KONTROLA VELIKOSTI NA KLIENTOVI
-                if (audioBlob.size < 2048) {
+                if (audioBlob.size < 4096) { // Zvýšena kontrola pro jistotu
                     alert("Nahrávka byla příliš krátká nebo prázdná. Zkuste to prosím znovu.");
-                    // Reset UI
                     recordingState = 'inactive';
                     updateButtonState();
-                    return; // Zastavíme další zpracování
+                    return;
                 }
 
                 uploadAndProcessAudio(audioBlob);
@@ -180,21 +176,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateButtonState() {
         if (recordingState === 'inactive') {
-            recordStopButton.classList.remove('is-recording');
-            micIcon.classList.remove('hidden');
-            pauseIcon.classList.add('hidden');
+            recordStopButton.classList.remove('is-recording'); micIcon.classList.remove('hidden'); pauseIcon.classList.add('hidden');
             statusText.textContent = 'Stiskněte pro nahrávání';
             processButton.classList.add('hidden');
         } else if (recordingState === 'recording') {
-            recordStopButton.classList.add('is-recording');
-            micIcon.classList.add('hidden');
-            pauseIcon.classList.remove('hidden');
+            recordStopButton.classList.add('is-recording'); micIcon.classList.add('hidden'); pauseIcon.classList.remove('hidden');
             statusText.textContent = 'Nahrávám... (klikněte pro pauzu)';
             processButton.classList.remove('hidden');
         } else if (recordingState === 'paused') {
-            recordStopButton.classList.remove('is-recording');
-            micIcon.classList.remove('hidden');
-            pauseIcon.classList.add('hidden');
+            recordStopButton.classList.remove('is-recording'); micIcon.classList.remove('hidden'); pauseIcon.classList.add('hidden');
             statusText.textContent = 'Pozastaveno (klikněte pro pokračování)';
             processButton.classList.remove('hidden');
         }
@@ -211,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('audio_file', audioBlob, 'recording.wav');
 
             if (retries < 3) {
-                 loaderText.textContent = `Server se probouzí, zkouším znovu... (${3 - retries + 1})`;
+                 loaderText.textContent = `Server se probouzí, zkouším znovu...`;
             } else {
                 loaderText.textContent = 'Nahrávám soubor na server...';
             }
@@ -234,13 +224,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             if (error instanceof TypeError && retries > 0) {
-                console.warn(`Síťová chyba, pravděpodobně se server probouzí. Zkouším znovu za ${delay / 1000}s... (${retries} pokusů zbývá)`);
+                console.warn(`Síťová chyba, pravděpodobně se server probouzí. Zkouším znovu za ${delay / 1000}s...`);
                 setTimeout(() => uploadAndProcessAudio(audioBlob, retries - 1, delay), delay);
             } else {
                 console.error("Kompletní chyba při nahrávání:", error);
                 let userMessage = `Došlo k chybě: ${error.message}`;
                 if (error instanceof TypeError) {
-                    userMessage = 'Chyba sítě: Nelze se připojit k serveru. Zkontrolujte připojení k internetu a zkuste to znovu.';
+                    userMessage = 'Chyba sítě: Nelze se připojit k serveru. Zkuste to prosím znovu.';
                 }
                 alert(userMessage);
                 loader.classList.add('hidden');
@@ -256,14 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const statusResponse = await fetch(`/status/${jobId}`);
                 if (!statusResponse.ok) {
                     clearInterval(intervalId);
-                    let errorMessage = `Chyba při zjišťování stavu: ${statusResponse.status} ${statusResponse.statusText}`;
-                    try {
-                        const errData = await statusResponse.json();
-                        errorMessage = errData.error || errorMessage;
-                    } catch (e) {
-                         console.error("Chybová odpověď ze /status nebyla ve formátu JSON.", e);
-                    }
-                    throw new Error(errorMessage);
+                    throw new Error(`Chyba při zjišťování stavu: ${statusResponse.status} ${statusResponse.statusText}`);
                 }
                 const job = await statusResponse.json();
 
@@ -293,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 recordStopButton.disabled = false;
                 processButton.disabled = false;
             }
-        }, 3000); // Ptáme se každé 3 sekundy
+        }, 3000);
     }
     
     function handleAiAction(event) {
@@ -311,20 +294,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/manipulate-text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, action, style }) });
             if (!response.ok) {
-                 let errorMessage = `Chyba serveru při AI úpravě: ${response.status} ${response.statusText}`;
-                 try {
-                    const errData = await response.json();
-                    errorMessage = errData.error || errorMessage;
-                } catch (e) {
-                    console.error("Chybová odpověď z /manipulate-text nebyla ve formátu JSON.", e);
-                }
-                throw new Error(errorMessage);
+                 throw new Error(`Chyba serveru při AI úpravě: ${response.status} ${response.statusText}`);
             }
             const data = await response.json();
             editedTextElem.value = data.text;
             updateEmailLink();
         } catch (error) {
-            console.error("Kompletní chyba při AI úpravě:", error);
             alert(`Došlo k chybě při úpravě textu: ${error.message}`);
         } finally {
             loader.classList.add('hidden');
