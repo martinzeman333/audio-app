@@ -116,15 +116,30 @@ document.addEventListener('DOMContentLoaded', () => {
             updateButtonState(); 
             audioChunks = [];
             mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.addEventListener("dataavailable", event => { audioChunks.push(event.data); });
+            
+            mediaRecorder.addEventListener("dataavailable", event => { 
+                audioChunks.push(event.data); 
+            });
+
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                
+                // KONTROLA VELIKOSTI NA KLIENTOVI
+                if (audioBlob.size < 2048) {
+                    alert("Nahrávka byla příliš krátká nebo prázdná. Zkuste to prosím znovu.");
+                    // Reset UI
+                    recordingState = 'inactive';
+                    updateButtonState();
+                    return; // Zastavíme další zpracování
+                }
+
                 uploadAndProcessAudio(audioBlob);
                 stream.getTracks().forEach(track => track.stop());
                 if (animationFrameId) cancelAnimationFrame(animationFrameId);
                 if (audioContext) audioContext.close();
                 clearCanvas();
             });
+
             mediaRecorder.start();
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             source = audioContext.createMediaStreamSource(stream);
@@ -214,7 +229,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Kompletní chyba při nahrávání:", error);
-            alert(`Došlo k chybě: ${error.message}`);
+            // VYLEPŠENÁ CHYBOVÁ HLÁŠKA
+            let userMessage = `Došlo k chybě: ${error.message}`;
+            if (error instanceof TypeError) {
+                userMessage = 'Chyba sítě: Nelze se připojit k serveru. Zkontrolujte připojení k internetu.';
+            }
+            alert(userMessage);
             loader.classList.add('hidden');
             recordStopButton.disabled = false;
             processButton.disabled = false;
