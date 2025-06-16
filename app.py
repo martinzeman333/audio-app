@@ -26,18 +26,53 @@ jobs = {}
 # --- Pomocné funkce ---
 
 def transcribe_audio_azure(audio_filename):
-    logging.info(f"Spouštím přepis souboru: {audio_filename}")
+    """
+    Přepíše DLOUHÝ audio soubor pomocí Azure Speech SDK v kontinuálním režimu.
+    Toto je robustní metoda pro zpracování nahrávek delších než 60 sekund.
+    """
+    logging.info(f"Spouštím KONTINUÁLNÍ přepis souboru: {audio_filename}")
     speech_config = speechsdk.SpeechConfig(subscription=os.getenv("AZURE_SPEECH_KEY"), region=os.getenv("AZURE_SPEECH_REGION"))
     speech_config.speech_recognition_language = "cs-CZ"
-    speech_config.set_property(speechsdk.PropertyId.Speech_SegmentationSilenceTimeoutMs, "5000")
     audio_config = speechsdk.audio.AudioConfig(filename=audio_filename)
-    recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
-    result = recognizer.recognize_once_async().get()
-    if result.reason == speechsdk.ResultReason.RecognizedSpeech: return result.text
-    elif result.reason == speechsdk.ResultReason.NoMatch: return "Řeč nebyla rozpoznána."
-    else:
-        logging.error(f"Azure chyba: {result.cancellation_details.reason} - {result.cancellation_details.error_details}")
-        raise Exception(f"Azure chyba: {result.cancellation_details.reason}")
+    
+    speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
+    
+    done = threading.Event()
+    all_results = []
+
+    def recognized_cb(evt):
+        # Tato funkce se zavolá pokaždé, když je úspěšně rozpoznána část řeči
+        if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
+            logging.info(f"ROZPOZNÁNO: {evt.result.text}")
+            all_results.append(evt.result.text)
+
+    def stop_cb(evt):
+        # Tato funkce se zavolá, jakmile je celý soubor zpracován
+        logging.info(f'UKONČUJI SEZENÍ: {evt}')
+        done.set() # Signalizuje hlavnímu vláknu, že je hotovo
+
+    # Připojení našich funkcí k událostem z Azure SDK
+    speech_recognizer.recognized.connect(recognized_cb)
+    speech_recognizer.session_started.connect(lambda evt: logging.info(f'SEZENÍ SPUŠTĚNO: {evt}'))
+    speech_recognizer.session_stopped.connect(stop_cb)
+    speech_recognizer.canceled.connect(stop_cb)
+
+    # Spuštění kontinuálního rozpoznávání. Bude běžet, dokud neskončí audio soubor.
+    speech_recognizer.start_continuous_recognition()
+    
+    # Bezpečné čekání na dokončení s časovým limitem (např. 15 minut)
+    finished_in_time = done.wait(timeout=900.0) 
+    if not finished_in_time:
+        logging.error("Přepis překročil časový limit 15 minut.")
+
+    speech_recognizer.stop_continuous_recognition()
+    
+    final_text = " ".join(all_results)
+    
+    if not final_text:
+        return "Řeč nebyla rozpoznána."
+        
+    return final_text
 
 def convert_audio_with_ffmpeg(input_path, output_path):
     try:
@@ -56,8 +91,6 @@ def call_gpt(prompt, temperature=0.5):
         return response.choices[0].message.content
     except Exception as e:
         raise RuntimeError(f"Chyba při volání OpenAI: {e}")
-
-# --- Hlavní zpracovávací funkce, která poběží na pozadí ---
 
 def process_audio_in_background(job_id, original_filepath):
     converted_filepath = f"temp_{job_id}_converted.wav"
@@ -93,8 +126,6 @@ def process_audio_in_background(job_id, original_filepath):
     finally:
         if os.path.exists(original_filepath): os.remove(original_filepath)
         if os.path.exists(converted_filepath): os.remove(converted_filepath)
-
-# --- API Endpoints ---
 
 @app.route('/')
 def index():
