@@ -197,15 +197,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             loaderText.textContent = 'Nahrávám soubor na server...';
             const uploadResponse = await fetch('/upload-audio', { method: 'POST', body: formData });
+            
             if (!uploadResponse.ok) {
-                const errData = await uploadResponse.json();
-                throw new Error(errData.error || 'Nahrání souboru selhalo.');
+                let errorMessage = `Chyba při nahrávání: ${uploadResponse.status} ${uploadResponse.statusText}`;
+                try {
+                    const errData = await uploadResponse.json();
+                    errorMessage = errData.error || errorMessage;
+                } catch (e) {
+                    console.error("Chybová odpověď serveru nebyla ve formátu JSON.", e);
+                }
+                throw new Error(errorMessage);
             }
-            const { job_id } = await uploadResponse.json();
 
+            const { job_id } = await uploadResponse.json();
             pollStatus(job_id);
 
         } catch (error) {
+            console.error("Kompletní chyba při nahrávání:", error);
             alert(`Došlo k chybě: ${error.message}`);
             loader.classList.add('hidden');
             recordStopButton.disabled = false;
@@ -219,7 +227,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const statusResponse = await fetch(`/status/${jobId}`);
                 if (!statusResponse.ok) {
                     clearInterval(intervalId);
-                    throw new Error('Chyba při zjišťování stavu zpracování.');
+                    let errorMessage = `Chyba při zjišťování stavu: ${statusResponse.status} ${statusResponse.statusText}`;
+                    try {
+                        const errData = await statusResponse.json();
+                        errorMessage = errData.error || errorMessage;
+                    } catch (e) {
+                         console.error("Chybová odpověď ze /status nebyla ve formátu JSON.", e);
+                    }
+                    throw new Error(errorMessage);
                 }
                 const job = await statusResponse.json();
 
@@ -242,6 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error(job.error || 'Neznámá chyba při zpracování na serveru.');
                 }
             } catch (error) {
+                console.error("Kompletní chyba při dotazování na stav:", error);
                 clearInterval(intervalId);
                 alert(`Došlo k chybě při zpracování: ${error.message}`);
                 loader.classList.add('hidden');
@@ -265,11 +281,22 @@ document.addEventListener('DOMContentLoaded', () => {
         loader.classList.remove('hidden');
         try {
             const response = await fetch('/manipulate-text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, action, style }) });
+            if (!response.ok) {
+                 let errorMessage = `Chyba serveru při AI úpravě: ${response.status} ${response.statusText}`;
+                 try {
+                    const errData = await response.json();
+                    errorMessage = errData.error || errorMessage;
+                } catch (e) {
+                    console.error("Chybová odpověď z /manipulate-text nebyla ve formátu JSON.", e);
+                }
+                throw new Error(errorMessage);
+            }
             const data = await response.json();
             editedTextElem.value = data.text;
             updateEmailLink();
         } catch (error) {
-            alert('Došlo k chybě při úpravě textu.');
+            console.error("Kompletní chyba při AI úpravě:", error);
+            alert(`Došlo k chybě při úpravě textu: ${error.message}`);
         } finally {
             loader.classList.add('hidden');
         }
