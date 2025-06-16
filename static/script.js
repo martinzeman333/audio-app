@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             li.appendChild(titleSpan);
-li.appendChild(deleteBtn);
+            li.appendChild(deleteBtn);
             historyList.appendChild(li);
         });
     }
@@ -119,7 +119,7 @@ li.appendChild(deleteBtn);
             mediaRecorder.addEventListener("dataavailable", event => { audioChunks.push(event.data); });
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                sendAudioToServer(audioBlob);
+                uploadAndProcessAudio(audioBlob);
                 stream.getTracks().forEach(track => track.stop());
                 if (animationFrameId) cancelAnimationFrame(animationFrameId);
                 if (audioContext) audioContext.close();
@@ -185,30 +185,70 @@ li.appendChild(deleteBtn);
         }
     }
     
-    async function sendAudioToServer(audioBlob) {
-        loaderText.textContent = 'Finalizuji a vylepšuji text...';
+    async function uploadAndProcessAudio(audioBlob) {
         loader.classList.remove('hidden');
         resultsDiv.classList.add('hidden');
         recordStopButton.disabled = true;
         processButton.disabled = true;
+
         try {
             const formData = new FormData();
             formData.append('audio_file', audioBlob, 'recording.wav');
-            const response = await fetch('/process-audio', { method: 'POST', body: formData });
-            const data = await response.json();
-            if (data.error) { throw new Error(data.error); }
-            
-            editedTextElem.value = data.edited_text; 
-            resultsDiv.classList.remove('hidden');
-            updateEmailLink();
-            addToHistory({ id: data.id, title: data.title, text: data.edited_text });
+
+            loaderText.textContent = 'Nahrávám soubor na server...';
+            const uploadResponse = await fetch('/upload-audio', { method: 'POST', body: formData });
+            if (!uploadResponse.ok) {
+                const errData = await uploadResponse.json();
+                throw new Error(errData.error || 'Nahrání souboru selhalo.');
+            }
+            const { job_id } = await uploadResponse.json();
+
+            pollStatus(job_id);
+
         } catch (error) {
-            alert(`Došlo k chybě při zpracování: ${error.message}`);
-        } finally {
+            alert(`Došlo k chybě: ${error.message}`);
             loader.classList.add('hidden');
             recordStopButton.disabled = false;
             processButton.disabled = false;
         }
+    }
+
+    function pollStatus(jobId) {
+        const intervalId = setInterval(async () => {
+            try {
+                const statusResponse = await fetch(`/status/${jobId}`);
+                if (!statusResponse.ok) {
+                    clearInterval(intervalId);
+                    throw new Error('Chyba při zjišťování stavu zpracování.');
+                }
+                const job = await statusResponse.json();
+
+                if (job.message) {
+                    loaderText.textContent = job.message;
+                }
+
+                if (job.status === 'completed') {
+                    clearInterval(intervalId);
+                    const data = job.result;
+                    editedTextElem.value = data.edited_text; 
+                    resultsDiv.classList.remove('hidden');
+                    updateEmailLink();
+                    addToHistory({ id: data.id, title: data.title, text: data.edited_text });
+                    loader.classList.add('hidden');
+                    recordStopButton.disabled = false;
+                    processButton.disabled = false;
+                } else if (job.status === 'failed') {
+                    clearInterval(intervalId);
+                    throw new Error(job.error || 'Neznámá chyba při zpracování na serveru.');
+                }
+            } catch (error) {
+                clearInterval(intervalId);
+                alert(`Došlo k chybě při zpracování: ${error.message}`);
+                loader.classList.add('hidden');
+                recordStopButton.disabled = false;
+                processButton.disabled = false;
+            }
+        }, 3000); // Ptáme se každé 3 sekundy
     }
     
     function handleAiAction(event) {
